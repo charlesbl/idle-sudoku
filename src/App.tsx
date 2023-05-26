@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 import Sudoku from './Sudoku'
-import { type KeyboardEventHandler, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { type TileModel, generateSudoku } from './SudokuModel'
 
 const AppStyle = styled.div`
@@ -61,7 +61,6 @@ const App = (): JSX.Element => {
         newSudoku[selectedTile].value = value
         setSudoku(newSudoku)
     }
-
 
     const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         handleChangeDraftMode(e)
