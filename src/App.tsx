@@ -2,10 +2,7 @@ import styled from 'styled-components'
 import Sudoku from './Sudoku'
 import { useEffect, useState } from 'react'
 import { type SudokuModel, generateSudoku } from './SudokuModel'
-import { lineSolver } from './solvers/line'
-import { columnSolver } from './solvers/column'
-import { lastDraftSolver } from './solvers/lastDraft'
-import { solve } from './solvers/solver'
+import { solve, strategies } from './solvers/solver'
 
 const AppStyle = styled.div`
     display: flex;
@@ -16,7 +13,7 @@ const AppStyle = styled.div`
     font-family: Roboto, sans-serif;
     flex-direction: column;
 `
-const SOLVER_TICK_TIME = 100
+const SOLVER_TICK_TIME = 10
 
 const App = (): JSX.Element => {
     const [puzzle, solution] = generateSudoku()
@@ -24,19 +21,24 @@ const App = (): JSX.Element => {
     const [solutionSudoku] = useState<SudokuModel>(solution)
     const [selectedTile, setSelectedTile] = useState<number | undefined>(undefined)
     const [solverTile, setSolverTile] = useState<number>(0)
-    const [draftMode, setDraftMode] = useState<boolean>(false)
+    const [draftMode, setDraftMode] = useState<boolean>(true)
     const [isSolved, setIsSolved] = useState<boolean>(false)
     const [currentStrategy, setCurrentStrategy] = useState<number>(0)
-    const strategies = [lineSolver, columnSolver, lastDraftSolver]
 
     useEffect(() => {
         const solverInterval = setInterval(() => {
-            if (isSolved) return
-            if (isSolved || checkSolved()) {
+            console.log(`TICK STRAT ${currentStrategy}`)
+            if (isSolved) {
                 clearInterval(solverInterval)
+                return
+            }
+            if (checkSolved()) {
                 setIsSolved(true)
                 setSolverTile(-1)
                 return
+            }
+            if (solverTile === 80) {
+                nexStrategy()
             }
             if (sudoku[solverTile].value !== undefined) {
                 nextTile()
@@ -44,10 +46,7 @@ const App = (): JSX.Element => {
             }
             const newSudoku = solve(strategies[currentStrategy], sudoku, solverTile)
             setSudoku(newSudoku)
-            if (currentStrategy === strategies.length - 1) {
-                nextTile()
-            }
-            nexStrategy()
+            nextTile()
         }, SOLVER_TICK_TIME)
         return () => {
             clearInterval(solverInterval)
@@ -127,7 +126,14 @@ const App = (): JSX.Element => {
             tabIndex={0}
         >
             <div>
-                Draft mode:
+            Strategy:
+                {' '}
+
+                {currentStrategy}
+            </div>
+
+            <div>
+            Draft mode:
                 {' '}
 
                 { draftMode ? 'on' : 'off'}
