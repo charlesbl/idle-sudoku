@@ -10,6 +10,9 @@ dependencies:
   styled-components:
     specifier: 6.0.0-rc.1
     version: 6.0.0-rc.1(react-dom@18.2.0)(react@18.2.0)
+  sudoku-gen:
+    specifier: ^1.0.2
+    version: 1.0.2
 
 devDependencies:
   '@types/react':
@@ -4358,6 +4361,10 @@ packages:
 
   /stylis@4.2.0:
     resolution: {integrity: sha512-Orov6g6BB1sDfYgzWfTHDOxamtX1bE/zo104Dh9e6fqJ3PooipYyfJ0pUmrZO2wAvO8YbEyeFrkV91XTsGMSrw==}
+    dev: false
+
+  /sudoku-gen@1.0.2:
+    resolution: {integrity: sha512-zQFQNbar9qGpbteAH7CQShGoR5lk7r4KYlt0Wsvts1eVMzLb2EZUovzc7gAmoHp+HmXGYadmqCyyXoY7QVEyhA==}
     dev: false
 
   /supports-color@5.5.0:

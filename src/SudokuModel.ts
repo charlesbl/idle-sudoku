@@ -1,8 +1,14 @@
+import { getSudoku } from 'sudoku-gen'
+
 export interface TileModel {
     value: number | undefined
     draftNumbers: boolean[]
+    fixed: boolean
 }
 
 export const generateSudoku = (): TileModel[] => {
-    return Array(81).fill(0).map(() => ({ value: undefined, draftNumbers: Array(9).fill(false) }))
+    const sudokugen = getSudoku('easy')
+    return sudokugen.puzzle.split('').map((value) => {
+        return { value: value === '-' ? undefined : parseInt(value), draftNumbers: Array(9).fill(false), fixed: true }
+    })
 }
