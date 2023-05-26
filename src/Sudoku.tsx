@@ -1,6 +1,6 @@
 import { styled } from 'styled-components'
 import Tile from './Tile'
-import { type TileModel } from './SudokuModel'
+import { type SudokuModel } from './SudokuModel'
 
 const GridStyle = styled.div`
     display: grid;
@@ -14,8 +14,9 @@ const SubGridStyle = styled.div`
 `
 
 interface SudokuProps {
-    sudoku: TileModel[]
+    sudoku: SudokuModel
     selectedTile: number | undefined
+    solverTile: number
     setSelectedTile: (tileId: number | undefined) => void
 }
 
@@ -25,14 +26,13 @@ const Sudoku = (props: SudokuProps): JSX.Element => {
             {Array(9).fill(0).map((_, i) => (
                 <SubGridStyle key={i}>
                     {Array(9).fill(0).map((_, j) => {
-                        // const x = i % 3 * 3 + j % 3
-                        // const y = Math.trunc(i / 3) * 3 + Math.trunc(j / 3)
-                        const tileId = i * 9 + j
+                        const tileId = i % 3 * 3 + j % 3 + (Math.trunc(i / 3) * 3 + Math.trunc(j / 3)) * 9
                         return (
                             <Tile
                                 key={j}
                                 onClick={() => { props.setSelectedTile(tileId) }}
                                 selected={props.selectedTile === tileId}
+                                solving={props.solverTile === tileId}
                                 tileModel={props.sudoku[tileId]}
                             />
                         )
