@@ -21,7 +21,6 @@ const App = (): JSX.Element => {
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key !== ' ' && e.key !== '0') return
         setDraftMode(!draftMode)
-        console.log(`draft mode: ${draftMode ? 'on' : 'off'}`)
     }
 
     const handleSelectedTileDisplacement = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -39,20 +38,30 @@ const App = (): JSX.Element => {
     }
 
     const handleChangeTileValue = (e: React.KeyboardEvent<HTMLDivElement>): void => {
-        if (selectedTile === undefined || sudoku[selectedTile].fixed) return
         const parsedKey = parseInt(e.key)
         if (isNaN(parsedKey) || parsedKey <= 0 || parsedKey > 9) return
         if (draftMode) {
-            const newSudoku = [...sudoku]
-            newSudoku[selectedTile].draftNumbers[parsedKey - 1] = !newSudoku[selectedTile].draftNumbers[parsedKey - 1]
-            newSudoku[selectedTile].value = undefined
-            setSudoku(newSudoku)
+            changeTileDraftMode(parsedKey)
         } else {
-            const newSudoku = [...sudoku]
-            newSudoku[selectedTile].value = parsedKey
-            setSudoku(newSudoku)
+            changeTileNormalMode(parsedKey)
         }
     }
+
+    const changeTileDraftMode = (value: number): void => {
+        if (selectedTile === undefined || sudoku[selectedTile].fixed) return
+        const newSudoku = [...sudoku]
+        newSudoku[selectedTile].draftNumbers[value - 1] = !newSudoku[selectedTile].draftNumbers[value - 1]
+        newSudoku[selectedTile].value = undefined
+        setSudoku(newSudoku)
+    }
+
+    const changeTileNormalMode = (value: number): void => {
+        if (selectedTile === undefined || sudoku[selectedTile].fixed) return
+        const newSudoku = [...sudoku]
+        newSudoku[selectedTile].value = value
+        setSudoku(newSudoku)
+    }
+
 
     const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         handleChangeDraftMode(e)
