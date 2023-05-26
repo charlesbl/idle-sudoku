@@ -18,40 +18,46 @@ const App = (): JSX.Element => {
     const [selectedTile, setSelectedTile] = useState<number | undefined>(undefined)
     const [draftMode, setDraftMode] = useState<boolean>(false)
 
-    const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
-        if (e.key === ' ' || e.key === '0') {
-            setDraftMode(!draftMode)
-            console.log(`draft mode: ${draftMode ? 'on' : 'off'}`)
-            return
-        }
+    const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        if (e.key !== ' ' && e.key !== '0') return
+        setDraftMode(!draftMode)
+        console.log(`draft mode: ${draftMode ? 'on' : 'off'}`)
+    }
+
+    const handleSelectedTileDisplacement = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (selectedTile === undefined) return
-        if (e.key.includes('Arrow')) {
-            const i = Math.floor(selectedTile / 9)
-            const j = selectedTile % 9
-            let newX = i % 3 * 3 + j % 3 + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0)
-            let newY = Math.trunc(i / 3) * 3 + Math.trunc(j / 3) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0)
-            if (newX < 0) newX = 8
-            if (newX > 8) newX = 0
-            if (newY < 0) newY = 8
-            if (newY > 8) newY = 0
-            setSelectedTile((Math.floor(newX / 3) + Math.floor(newY / 3) * 3) * 9 + (newX % 3) + (newY % 3) * 3)
-            return
-        }
+        if (!e.key.includes('Arrow')) return
+        const i = Math.floor(selectedTile / 9)
+        const j = selectedTile % 9
+        let newX = i % 3 * 3 + j % 3 + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0)
+        let newY = Math.trunc(i / 3) * 3 + Math.trunc(j / 3) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0)
+        if (newX < 0) newX = 8
+        if (newX > 8) newX = 0
+        if (newY < 0) newY = 8
+        if (newY > 8) newY = 0
+        setSelectedTile((Math.floor(newX / 3) + Math.floor(newY / 3) * 3) * 9 + (newX % 3) + (newY % 3) * 3)
+    }
+
+    const handleChangeTileValue = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        if (selectedTile === undefined || sudoku[selectedTile].fixed) return
         const parsedKey = parseInt(e.key)
-        if (!isNaN(parsedKey) && parsedKey > 0 && parsedKey < 10) {
-            if (draftMode) {
-                console.log('set draft')
-                const newSudoku = [...sudoku]
-                newSudoku[selectedTile].draftNumbers[parsedKey - 1] = !newSudoku[selectedTile].draftNumbers[parsedKey - 1]
-                newSudoku[selectedTile].value = undefined
-                setSudoku(newSudoku)
-            } else {
-                console.log('set value')
-                const newSudoku = [...sudoku]
-                newSudoku[selectedTile].value = parsedKey
-                setSudoku(newSudoku)
-            }
+        if (isNaN(parsedKey) || parsedKey <= 0 || parsedKey > 9) return
+        if (draftMode) {
+            const newSudoku = [...sudoku]
+            newSudoku[selectedTile].draftNumbers[parsedKey - 1] = !newSudoku[selectedTile].draftNumbers[parsedKey - 1]
+            newSudoku[selectedTile].value = undefined
+            setSudoku(newSudoku)
+        } else {
+            const newSudoku = [...sudoku]
+            newSudoku[selectedTile].value = parsedKey
+            setSudoku(newSudoku)
         }
+    }
+
+    const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        handleChangeDraftMode(e)
+        handleSelectedTileDisplacement(e)
+        handleChangeTileValue(e)
     }
 
     return (
