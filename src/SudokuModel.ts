@@ -9,7 +9,7 @@ export interface TileModel {
 export type SudokuModel = TileModel[]
 
 export const generateSudoku = (): [SudokuModel, SudokuModel] => {
-    const sudokugen = getSudoku('easy')
+    const sudokugen = getSudoku('medium')
     const puzzle = sudokugen.puzzle.split('').map((value) => {
         const fixed = value !== '-'
         return { value: fixed ? parseInt(value) : undefined, draftNumbers: Array(9).fill(true), fixed }

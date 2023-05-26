@@ -18,7 +18,7 @@ const SOLVER_TICK_TIME = 10
 const App = (): JSX.Element => {
     const [puzzle, solution] = generateSudoku()
     const [sudoku, setSudoku] = useState<SudokuModel>(puzzle)
-    const [solutionSudoku] = useState<SudokuModel>(solution)
+    const [solutionSudoku, setSolutionSudoku] = useState<SudokuModel>(solution)
     const [selectedTile, setSelectedTile] = useState<number | undefined>(undefined)
     const [solverTile, setSolverTile] = useState<number>(0)
     const [draftMode, setDraftMode] = useState<boolean>(true)
@@ -30,6 +30,9 @@ const App = (): JSX.Element => {
             console.log(`TICK STRAT ${currentStrategy}`)
             if (isSolved) {
                 clearInterval(solverInterval)
+                setTimeout(() => {
+                    reset()
+                }, 2000)
                 return
             }
             if (checkSolved()) {
@@ -53,12 +56,22 @@ const App = (): JSX.Element => {
         }
     }, [solverTile, sudoku, isSolved, currentStrategy])
 
+    const reset = (): void => {
+        const [puzzle, solution] = generateSudoku()
+        setSudoku(puzzle)
+        setSolutionSudoku(solution)
+        setIsSolved(false)
+        setSolverTile(0)
+        setCurrentStrategy(0)
+    }
+
     const nextTile = (): void => {
         setSolverTile((solverTile + 1) % 81)
     }
 
     const nexStrategy = (): void => {
         setCurrentStrategy((currentStrategy + 1) % strategies.length)
+        // setCurrentStrategy(Math.floor(Math.random() * strategies.length))
     }
 
     const checkSolved = (): boolean => sudoku.every((tile, i) => solutionSudoku[i].value === tile.value)
@@ -146,7 +159,20 @@ const App = (): JSX.Element => {
                 sudoku={sudoku}
             />
 
-            <button onClick={cheatSolve}>Solve</button>
+            <div>
+                <button onClick={cheatSolve}>Solve</button>
+
+                <button onClick={() => { setIsSolved(true) }}>
+                    pause
+                </button>
+
+                <button onClick={() => {
+                    reset()
+                }}
+                >
+                    New
+                </button>
+            </div>
         </AppStyle>
     )
 }

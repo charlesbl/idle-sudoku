@@ -1,8 +1,8 @@
 import { type SudokuModel } from '../SudokuModel'
-import { columnSolver } from './column'
+import { columnSolver, draftColumnSolver } from './column'
 import { lastDraftSolver } from './lastDraft'
-import { lineSolver } from './line'
-import { squareSolver } from './square'
+import { draftLineSolver, lineSolver } from './line'
+import { draftSquareSolver, squareSolver } from './square'
 
 export type SolverStrategy = (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]) => SudokuModel
 export interface TestedNumber {
@@ -21,5 +21,8 @@ export const strategies = [
     lineSolver,
     columnSolver,
     squareSolver,
+    draftLineSolver,
+    draftColumnSolver,
+    draftSquareSolver,
     lastDraftSolver
 ]
