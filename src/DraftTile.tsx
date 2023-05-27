@@ -4,14 +4,12 @@ const SubGridStyle = styled.div`
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     text-align: center;
+    align-items: center;
     width: 90%;
     height: 90%;
 `
 
 const DraftTileStyle = styled.div`
-    display: flex;
-    justify-content: center;
-    align-items: center;
     font-size: 0.2em;
     height: 1em;
 `

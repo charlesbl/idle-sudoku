@@ -2,17 +2,24 @@ import styled from 'styled-components'
 import Sudoku from './Sudoku'
 import { useEffect, useState } from 'react'
 import { type SudokuModel, generateSudoku } from './SudokuModel'
-import { solve, strategies } from './solvers/solver'
+import { type SolverStrategy, solve } from './solvers/solver'
+import Upgrades from './Upgrades'
+import { type UpgradeModel, allUpgrades } from './upgrades/upgrade'
 
 const AppStyle = styled.div`
     display: flex;
-    justify-content: center;
     align-items: center;
+    flex-direction: row-reverse;
+    justify-content: center;
     height: 100vh;
-    font-size: 4em;
     font-family: Roboto, sans-serif;
-    flex-direction: column;
 `
+
+const SudokuLayout = styled.div`
+    text-align: center;
+    font-size: 4em;
+`
+
 const SOLVER_TICK_TIME = 10
 
 const App = (): JSX.Element => {
@@ -24,6 +31,8 @@ const App = (): JSX.Element => {
     const [draftMode, setDraftMode] = useState<boolean>(true)
     const [isSolved, setIsSolved] = useState<boolean>(false)
     const [currentStrategy, setCurrentStrategy] = useState<number>(0)
+    const [strategies, setStrategies] = useState<SolverStrategy[]>([])
+    const [upgrades, setUpgrades] = useState<UpgradeModel[]>(allUpgrades)
 
     useEffect(() => {
         const solverInterval = setInterval(() => {
@@ -47,8 +56,10 @@ const App = (): JSX.Element => {
                 nextTile()
                 return
             }
-            const newSudoku = solve(strategies[currentStrategy], sudoku, solverTile)
-            setSudoku(newSudoku)
+            if (currentStrategy < strategies.length) {
+                const newSudoku = solve(strategies[currentStrategy], sudoku, solverTile)
+                setSudoku(newSudoku)
+            }
             nextTile()
         }, SOLVER_TICK_TIME)
         return () => {
@@ -70,8 +81,8 @@ const App = (): JSX.Element => {
     }
 
     const nexStrategy = (): void => {
+        if (currentStrategy >= strategies.length) return
         setCurrentStrategy((currentStrategy + 1) % strategies.length)
-        // setCurrentStrategy(Math.floor(Math.random() * strategies.length))
     }
 
     const checkSolved = (): boolean => sudoku.every((tile, i) => solutionSudoku[i].value === tile.value)
@@ -138,41 +149,45 @@ const App = (): JSX.Element => {
             onKeyDown={handleOnKeyDown}
             tabIndex={0}
         >
-            <div>
+            <SudokuLayout>
+                <div>
             Strategy:
-                {' '}
+                    {' '}
 
-                {currentStrategy}
-            </div>
+                    {currentStrategy}
+                </div>
 
-            <div>
+                <div>
             Draft mode:
-                {' '}
+                    {' '}
 
-                { draftMode ? 'on' : 'off'}
-            </div>
+                    { draftMode ? 'on' : 'off'}
+                </div>
 
-            <Sudoku
-                selectedTile={selectedTile}
-                setSelectedTile={(tileId) => { setSelectedTile(tileId) }}
-                solverTile={solverTile}
-                sudoku={sudoku}
-            />
+                <Sudoku
+                    selectedTile={selectedTile}
+                    setSelectedTile={(tileId) => { setSelectedTile(tileId) }}
+                    solverTile={solverTile}
+                    sudoku={sudoku}
+                />
 
-            <div>
-                <button onClick={cheatSolve}>Solve</button>
+                <div>
+                    <button onClick={cheatSolve}>Solve</button>
 
-                <button onClick={() => { setIsSolved(true) }}>
+                    <button onClick={() => { setIsSolved(true) }}>
                     pause
-                </button>
+                    </button>
 
-                <button onClick={() => {
-                    reset()
-                }}
-                >
+                    <button onClick={() => {
+                        reset()
+                    }}
+                    >
                     New
-                </button>
-            </div>
+                    </button>
+                </div>
+            </SudokuLayout>
+
+            <Upgrades upgrades={upgrades} />
         </AppStyle>
     )
 }
