@@ -1,5 +1,6 @@
 import styled from 'styled-components'
-import { type UpgradeModel } from './upgrades/upgrade'
+import { type UpgradeModel } from '../model/upgrades/upgrade'
+import { useSudoku } from './SudokuContext'
 
 const UgradeStyle = styled.div`
     font-size: 1em;
@@ -29,6 +30,15 @@ interface UpgradeProps {
 }
 
 const Upgrade = (props: UpgradeProps): JSX.Element => {
+    const { addStategy, upgrades, setUpgrades } = useSudoku()
+
+    const purchaseUpgrade = (): void => {
+        if (props.upgrade.strategy !== undefined) {
+            addStategy(props.upgrade.strategy.id)
+        }
+        setUpgrades(upgrades.filter((upgrade) => upgrade.id !== props.upgrade.id))
+    }
+
     return (
         <UgradeStyle>
             <Title>
@@ -41,7 +51,7 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
 
             <Cost>
                 Buy:
-                <CostButton onClick={() => { props.upgrade.onPurchase() }}>
+                <CostButton onClick={() => { purchaseUpgrade() }}>
                     {props.upgrade.cost}
                 </CostButton>
             </Cost>

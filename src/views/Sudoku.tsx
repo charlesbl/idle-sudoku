@@ -1,6 +1,6 @@
 import { styled } from 'styled-components'
 import Tile from './Tile'
-import { type SudokuModel } from './SudokuModel'
+import { useSudoku } from './SudokuContext'
 
 const GridStyle = styled.div`
     display: grid;
@@ -13,14 +13,9 @@ const SubGridStyle = styled.div`
     border: 1px solid gray;
 `
 
-interface SudokuProps {
-    sudoku: SudokuModel
-    selectedTile: number | undefined
-    solverTile: number
-    setSelectedTile: (tileId: number | undefined) => void
-}
-
-const Sudoku = (props: SudokuProps): JSX.Element => {
+const Sudoku = (): JSX.Element => {
+    const { sudoku, solverTile, selectedTile, setSelectedTile } = useSudoku()
+    if (sudoku === undefined) return <></>
     return (
         <GridStyle>
             {Array(9).fill(0).map((_, i) => (
@@ -30,10 +25,10 @@ const Sudoku = (props: SudokuProps): JSX.Element => {
                         return (
                             <Tile
                                 key={j}
-                                onClick={() => { props.setSelectedTile(tileId) }}
-                                selected={props.selectedTile === tileId}
-                                solving={props.solverTile === tileId}
-                                tileModel={props.sudoku[tileId]}
+                                onClick={() => { setSelectedTile(tileId) }}
+                                selected={selectedTile === tileId}
+                                solving={solverTile === tileId}
+                                tileModel={sudoku[tileId]}
                             />
                         )
                     })}

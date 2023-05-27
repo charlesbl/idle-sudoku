@@ -1,0 +1,131 @@
+import styled from 'styled-components'
+import Sudoku from './Sudoku'
+import Upgrades from './Upgrades'
+import { useSudoku } from './SudokuContext'
+
+const AppStyle = styled.div`
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+    justify-content: center;
+    height: 100vh;
+    font-family: Roboto, sans-serif;
+`
+
+const SudokuLayout = styled.div`
+    text-align: center;
+    font-size: 4em;
+`
+
+const Infos = styled.div`
+    text-align: center;
+    font-size: 0.5em;
+`
+
+const App = (): JSX.Element => {
+    const {
+        sudoku,
+        setSudoku,
+        draftMode,
+        setDraftMode,
+        selectedTile,
+        setSelectedTile,
+        upgrades,
+        currentStrategy,
+        cheatSolve,
+        reset
+    } = useSudoku()
+
+    const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        if (e.key !== ' ' && e.key !== '0') return
+        setDraftMode(!draftMode)
+    }
+
+    const handleSelectedTileDisplacement = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        if (selectedTile === undefined) return
+        if (!e.key.includes('Arrow')) return
+        let newX = selectedTile % 9 + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0)
+        let newY = Math.floor(selectedTile / 9) + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0)
+        if (newX < 0) newX = 8
+        if (newX > 8) newX = 0
+        if (newY < 0) newY = 8
+        if (newY > 8) newY = 0
+        setSelectedTile(newX + newY * 9)
+    }
+
+    const handleChangeTileValue = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        const parsedKey = parseInt(e.key)
+        if (isNaN(parsedKey) || parsedKey <= 0 || parsedKey > 9) return
+        if (draftMode) {
+            changeTileDraftMode(parsedKey)
+        } else {
+            changeTileNormalMode(parsedKey)
+        }
+    }
+
+    const changeTileDraftMode = (value: number): void => {
+        if (sudoku === undefined || selectedTile === undefined || sudoku[selectedTile].fixed) return
+        const newSudoku = [...sudoku]
+        newSudoku[selectedTile].draftNumbers[value - 1] = !newSudoku[selectedTile].draftNumbers[value - 1]
+        newSudoku[selectedTile].value = undefined
+        setSudoku(newSudoku)
+    }
+
+    const changeTileNormalMode = (value: number): void => {
+        if (sudoku === undefined || selectedTile === undefined || sudoku[selectedTile].fixed) return
+        const newSudoku = [...sudoku]
+        newSudoku[selectedTile].value = value
+        setSudoku(newSudoku)
+    }
+
+    const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        handleChangeDraftMode(e)
+        handleSelectedTileDisplacement(e)
+        handleChangeTileValue(e)
+    }
+
+    return (
+        <AppStyle
+            onClick={() => { setSelectedTile(undefined) }}
+            onKeyDown={handleOnKeyDown}
+            tabIndex={0}
+        >
+            <SudokuLayout>
+                <Infos>
+                    <div>
+                        {currentStrategy?.name ?? 'No Strategy'}
+                    </div>
+
+                    <div>
+                    Draft mode:
+
+                        { draftMode ? 'on' : 'off'}
+                    </div>
+                </Infos>
+
+                {sudoku === undefined
+                    ? 'Generating...'
+                    : (
+                        <Sudoku />
+                    )}
+
+                <div>
+                    <button onClick={cheatSolve}>Solve</button>
+
+                    <button onClick={() => {
+                        reset()
+                    }}
+                    >
+                        New
+                    </button>
+
+                    <button onClick={() => { localStorage.clear() }}>Clear save</button>
+                </div>
+            </SudokuLayout>
+
+            <Upgrades upgrades={upgrades} />
+        </AppStyle>
+    )
+}
+
+export default App
