@@ -30,7 +30,6 @@ const App = (): JSX.Element => {
         setDraftMode,
         selectedTile,
         setSelectedTile,
-        upgrades,
         currentStrategy,
         cheatSolve,
         reset
@@ -123,7 +122,7 @@ const App = (): JSX.Element => {
                 </div>
             </SudokuLayout>
 
-            <Upgrades upgrades={upgrades} />
+            <Upgrades />
         </AppStyle>
     )
 }

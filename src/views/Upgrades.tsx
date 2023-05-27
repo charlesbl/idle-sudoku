@@ -1,6 +1,5 @@
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
-import { type UpgradeModel } from '../model/upgrades/upgrade'
 import { useSudoku } from './SudokuContext'
 
 const UpgradesStyle = styled.div`
