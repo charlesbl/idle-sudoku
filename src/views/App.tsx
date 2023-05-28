@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import Sudoku from './Sudoku'
+import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './SudokuContext'
 
@@ -105,7 +105,7 @@ const App = (): JSX.Element => {
                 {sudoku === undefined
                     ? 'Generating...'
                     : (
-                        <Sudoku />
+                        <SudokuGrid />
                     )}
 
                 <div>

@@ -13,7 +13,7 @@ const SubGridStyle = styled.div`
     border: 1px solid gray;
 `
 
-const Sudoku = (): JSX.Element => {
+const SudokuGrid = (): JSX.Element => {
     const { sudoku, solverTile, selectedTile, setSelectedTile } = useSudoku()
     if (sudoku === undefined) return <></>
     return (
@@ -38,4 +38,4 @@ const Sudoku = (): JSX.Element => {
     )
 }
 
-export default Sudoku
+export default SudokuGrid
