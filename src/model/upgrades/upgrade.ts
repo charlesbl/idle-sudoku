@@ -23,11 +23,11 @@ const createPurchaseStrategy = (id: string, name: string, description: string, c
 }
 
 export const allUpgrades: UpgradeModel[] = [
-    createPurchaseStrategy('line', 'Line Strategy', 'Unlock the line strategy for the solver', 10, lineSolver),
-    createPurchaseStrategy('column', 'Column Strategy', 'Unlock the column strategy for the solver', 10, columnSolver),
-    createPurchaseStrategy('square', 'Square Strategy', 'Unlock the square strategy for the solver', 10, squareSolver),
-    createPurchaseStrategy('draft-line', 'Draft line Strategy', 'Unlock the draft line strategy for the solver', 10, draftLineSolver),
-    createPurchaseStrategy('draft-column', 'Draft column Strategy', 'Unlock the draft column strategy for the solver', 10, draftColumnSolver),
-    createPurchaseStrategy('draft-square', 'Draft square Strategy', 'Unlock the draft square strategy for the solver', 10, draftSquareSolver),
-    createPurchaseStrategy('last-draft', 'Last Draft Strategy', 'Unlock the last draft strategy for the solver', 10, lastDraftSolver)
+    createPurchaseStrategy('line', 'Line Strategy', 'Unlock the line strategy for the solver', 1, lineSolver),
+    createPurchaseStrategy('column', 'Column Strategy', 'Unlock the column strategy for the solver', 1, columnSolver),
+    createPurchaseStrategy('square', 'Square Strategy', 'Unlock the square strategy for the solver', 1, squareSolver),
+    createPurchaseStrategy('draft-line', 'Draft line Strategy', 'Unlock the draft line strategy for the solver', 1, draftLineSolver),
+    createPurchaseStrategy('draft-column', 'Draft column Strategy', 'Unlock the draft column strategy for the solver', 1, draftColumnSolver),
+    createPurchaseStrategy('draft-square', 'Draft square Strategy', 'Unlock the draft square strategy for the solver', 1, draftSquareSolver),
+    createPurchaseStrategy('last-draft', 'Last Draft Strategy', 'Unlock the last draft strategy for the solver', 1, lastDraftSolver)
 ]

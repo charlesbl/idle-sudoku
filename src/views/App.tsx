@@ -33,7 +33,8 @@ const App = (): JSX.Element => {
         strategies,
         currentStrategy,
         cheatSolve,
-        reset
+        reset,
+        money
     } = useSudoku()
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -94,6 +95,12 @@ const App = (): JSX.Element => {
 
             <SudokuLayout>
                 <Infos>
+                    <div>
+                        {money}
+
+                        €
+                    </div>
+
                     <div>
                         {currentStrategy?.name ?? 'No Strategy'}
                     </div>

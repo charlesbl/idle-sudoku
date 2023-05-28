@@ -16,7 +16,8 @@ export const useTick = ({
     isSolved,
     setIsSolved,
     reset,
-    upgrades
+    upgrades,
+    addMoney
 }: SudokuContextModel): () => void => {
     const nextTile = (): void => {
         if (solverTile === undefined) return
@@ -56,6 +57,7 @@ export const useTick = ({
                 if (checkSolved()) {
                     setIsSolved(true)
                     setSolverTile(undefined)
+                    addMoney(1)
                     return
                 }
                 if (currentStrategy === undefined) {
@@ -80,7 +82,6 @@ export const useTick = ({
                 nextTile()
             }, SOLVER_TICK_TIME)
             return () => {
-                console.log('clearing interval')
                 clearInterval(solverInterval)
             }
         }, [solverTile, sudoku, isSolved, currentStrategy, upgrades])

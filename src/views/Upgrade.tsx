@@ -30,14 +30,7 @@ interface UpgradeProps {
 }
 
 const Upgrade = (props: UpgradeProps): JSX.Element => {
-    const { addStategy, upgrades, setUpgrades } = useSudoku()
-
-    const purchaseUpgrade = (): void => {
-        if (props.upgrade.strategy !== undefined) {
-            addStategy(props.upgrade.strategy.id)
-        }
-        setUpgrades(upgrades.filter((upgrade) => upgrade.id !== props.upgrade.id))
-    }
+    const { purchaseUpgrade } = useSudoku()
 
     return (
         <UgradeStyle>
@@ -51,7 +44,7 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
 
             <Cost>
                 Buy:
-                <CostButton onClick={() => { purchaseUpgrade() }}>
+                <CostButton onClick={() => { purchaseUpgrade(props.upgrade) }}>
                     {props.upgrade.cost}
                 </CostButton>
             </Cost>

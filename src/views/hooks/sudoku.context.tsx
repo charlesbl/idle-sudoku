@@ -1,13 +1,14 @@
 import { type PropsWithChildren, createContext, useContext, useState } from 'react'
 import type React from 'react'
 import { generateSudoku, type SudokuModel } from '../../model/sudoku.model'
-import { allUpgrades, type UpgradeModel } from '../../model/upgrades/upgrade'
+import { type UpgradeModel } from '../../model/upgrades/upgrade'
 import useLocalStorageState from 'use-local-storage-state'
 import { type Strategy } from '../../model/solvers/strategies'
 import { type Difficulty } from 'sudoku-gen/dist/types/difficulty.type'
 import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
 import { useUpgrades } from './upgrades.hook'
+import { useMoney } from './money.hook'
 
 const DIFFICULTY: Difficulty = 'easy'
 
@@ -31,6 +32,9 @@ export interface SudokuContextModel {
     isSolved: boolean
     setIsSolved: React.Dispatch<React.SetStateAction<boolean>>
     setSolverTile: React.Dispatch<React.SetStateAction<number | undefined>>
+    money: number
+    addMoney: (amount: number) => void
+    purchaseUpgrade: (upgrade: UpgradeModel) => void
 }
 
 const SudokuContext = createContext<SudokuContextModel>({} as any)
@@ -45,12 +49,9 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const { upgrades, setUpgrades } = useUpgrades()
 
-    const {
-        setCurrentStrategy,
-        strategies,
-        currentStrategy,
-        addStategy
-    } = useStrategy()
+    const { setCurrentStrategy, strategies, currentStrategy, addStategy } = useStrategy()
+
+    const { money, addMoney, spend } = useMoney()
 
     const reset = (): void => {
         const [puzzle, solution] = generateSudoku(DIFFICULTY)
@@ -59,6 +60,15 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setIsSolved(false)
         setSolverTile(undefined)
         setCurrentStrategy(undefined)
+    }
+
+    const purchaseUpgrade = (upgrade: UpgradeModel): void => {
+        const spent = spend(upgrade.cost)
+        if (!spent) return
+        if (upgrade.strategy !== undefined) {
+            addStategy(upgrade.strategy.id)
+        }
+        setUpgrades(upgrades.filter((u) => u.id !== upgrade.id))
     }
 
     const cheatSolve = (): void => {
@@ -89,7 +99,10 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         isSolved,
         setIsSolved,
         setCurrentStrategy,
-        setSolverTile
+        setSolverTile,
+        money,
+        addMoney,
+        purchaseUpgrade
     }
 
     const tickeffect = useTick(value)
