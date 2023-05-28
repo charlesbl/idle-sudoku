@@ -1,13 +1,13 @@
 import { columnSolver, draftColumnSolver } from './column'
 import { lastDraftSolver } from './lastDraft'
 import { lineSolver, draftLineSolver } from './line'
-import { type SolverStrategy } from './solver'
+import { type Solver } from './solver'
 import { squareSolver, draftSquareSolver } from './square'
 
 export interface Strategy {
     id: string
     name: string
-    solver: SolverStrategy
+    solver: Solver
 }
 
 export const allStrategies: Strategy[] = [

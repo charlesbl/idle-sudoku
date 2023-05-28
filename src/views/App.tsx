@@ -3,6 +3,9 @@ import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 
+// TODO handle user error in normal mode (same number in row, column or square)
+// TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished
+
 const AppStyle = styled.div`
     display: flex;
     align-items: center;
@@ -76,6 +79,11 @@ const App = (): JSX.Element => {
     const changeTileNormalMode = (value: number): void => {
         if (sudoku === undefined || selectedTile === undefined || sudoku[selectedTile].fixed) return
         const newSudoku = [...sudoku]
+        if (newSudoku[selectedTile].value === value) {
+            newSudoku[selectedTile].value = undefined
+            setSudoku(newSudoku)
+            return
+        }
         newSudoku[selectedTile].value = value
 
         draftHelpers.forEach((helper) => {
