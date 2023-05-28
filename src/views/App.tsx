@@ -1,12 +1,12 @@
 import styled from 'styled-components'
 import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
-import { useSudoku } from './SudokuContext'
+import { useSudoku } from './hooks/SudokuContext'
 
 const AppStyle = styled.div`
     display: flex;
     align-items: center;
-    flex-direction: row-reverse;
+    flex-direction: row;
     justify-content: center;
     height: 100vh;
     font-family: Roboto, sans-serif;
@@ -30,6 +30,7 @@ const App = (): JSX.Element => {
         setDraftMode,
         selectedTile,
         setSelectedTile,
+        strategies,
         currentStrategy,
         cheatSolve,
         reset
@@ -89,6 +90,8 @@ const App = (): JSX.Element => {
             onKeyDown={handleOnKeyDown}
             tabIndex={0}
         >
+            <Upgrades />
+
             <SudokuLayout>
                 <Infos>
                     <div>
@@ -122,7 +125,21 @@ const App = (): JSX.Element => {
                 </div>
             </SudokuLayout>
 
-            <Upgrades />
+            <div>
+                <div>
+                    Unlocked Strategies
+                </div>
+
+                <div>
+                    {strategies.map((strategy) => (
+                        <div key={strategy.id}>
+                            {strategy.id === currentStrategy?.id ? '-> ' : ''}
+
+                            {strategy.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </AppStyle>
     )
 }

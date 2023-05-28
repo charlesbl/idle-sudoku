@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 import { type UpgradeModel } from '../model/upgrades/upgrade'
-import { useSudoku } from './SudokuContext'
+import { useSudoku } from './hooks/SudokuContext'
 
 const UgradeStyle = styled.div`
     font-size: 1em;

@@ -1,16 +1,17 @@
 import { styled } from 'styled-components'
 import Tile from './Tile'
-import { useSudoku } from './SudokuContext'
+import { useSudoku } from './hooks/SudokuContext'
 
 const GridStyle = styled.div`
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+    border: 2px solid white;
 `
 
 const SubGridStyle = styled.div`
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    border: 1px solid gray;
+    border: 2px solid white;
 `
 
 const SudokuGrid = (): JSX.Element => {

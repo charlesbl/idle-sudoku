@@ -1,4 +1,5 @@
 import { getSudoku } from 'sudoku-gen'
+import { type Difficulty } from 'sudoku-gen/dist/types/difficulty.type'
 
 export interface TileModel {
     value: number | undefined
@@ -8,8 +9,8 @@ export interface TileModel {
 
 export type SudokuModel = TileModel[]
 
-export const generateSudoku = (): [SudokuModel, SudokuModel] => {
-    const sudokugen = getSudoku('medium')
+export const generateSudoku = (difficulty?: Difficulty): [SudokuModel, SudokuModel] => {
+    const sudokugen = getSudoku(difficulty)
     const puzzle = sudokugen.puzzle.split('').map((value) => {
         const fixed = value !== '-'
         return { value: fixed ? parseInt(value) : undefined, draftNumbers: Array(9).fill(true), fixed }
