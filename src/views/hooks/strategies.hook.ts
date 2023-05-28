@@ -1,5 +1,6 @@
 import useLocalStorageState from 'use-local-storage-state'
-import { type Strategy, allStrategies } from '../../model/solvers/strategies'
+import { type Strategy } from '../../model/solvers/strategy'
+import { allUpgrades } from '../../model/upgrades/upgrade'
 
 interface StrategyHook {
     strategies: Strategy[]
@@ -12,7 +13,7 @@ export const useStrategy = (): StrategyHook => {
     const [currentStrategyId, setCurrentStrategyId] = useLocalStorageState<string | undefined>('currentStrategyId')
     const [strategyIds, setStrategyIds] = useLocalStorageState<string[]>('strategyIds', { defaultValue: [] })
 
-    const getStrategy = (id: string): Strategy | undefined => allStrategies.find(strategy => strategy.id === id)
+    const getStrategy = (id: string): Strategy | undefined => allUpgrades.find(upgrade => upgrade.strategy?.id === id)?.strategy
     const addStategy = (id: string): void => { setStrategyIds([...strategyIds, id]) }
     const strategies = strategyIds.map(id => getStrategy(id)) as Strategy[]
 

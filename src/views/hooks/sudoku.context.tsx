@@ -3,7 +3,7 @@ import type React from 'react'
 import { type CustomDifficulty, generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import { type UpgradeModel } from '../../model/upgrades/upgrade'
 import useLocalStorageState from 'use-local-storage-state'
-import { type Strategy } from '../../model/solvers/strategies'
+import { type Strategy } from '../../model/solvers/strategy'
 import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
 import { useUpgrades } from './upgrades.hook'
@@ -14,7 +14,7 @@ import { type DraftHelper } from '../../model/draftHelpers/draftHelpers'
 const DIFFICULTY: CustomDifficulty = 'very-easy'
 
 export interface SudokuContextModel {
-    solution: SudokuModel | undefined
+    solution: number[] | undefined
     sudoku: SudokuModel | undefined
     setSudoku: React.Dispatch<React.SetStateAction<SudokuModel | undefined>>
     selectedTile: number | undefined
@@ -44,7 +44,7 @@ const SudokuContext = createContext<SudokuContextModel>({} as any)
 
 export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [sudoku, setSudoku] = useLocalStorageState<SudokuModel | undefined>('sudoku')
-    const [solution, setSolution] = useLocalStorageState<SudokuModel | undefined>('solution')
+    const [solution, setSolution] = useLocalStorageState<number[] | undefined>('solution')
     const [selectedTile, setSelectedTile] = useState<number | undefined>(undefined)
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: true })
@@ -88,7 +88,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         if (solution === undefined || sudoku === undefined) return
         const newSudoku = [...sudoku]
         newSudoku.forEach((tile, i) => {
-            tile.value = solution[i].value
+            tile.value = solution[i]
         })
         setSudoku(newSudoku)
     }

@@ -1,12 +1,13 @@
 import { getSquareId } from '../../utils/utils'
 import { type SudokuModel } from '../sudoku.model'
 import { type TestedNumber } from './solver'
-import { type Strategy } from './strategies'
+import { type Strategy } from './strategy'
 
 export const squareSolver: Strategy = {
     id: 'square',
     name: 'Square Strategy',
     solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+        if (sudoku[solvingTile].value !== undefined) return sudoku
         const newSudoku = [...sudoku]
         const square = newSudoku.filter((_, index) => getSquareId(index) === getSquareId(solvingTile))
         testedNumbers.forEach((testedNb) => {
@@ -20,6 +21,7 @@ export const draftSquareSolver: Strategy = {
     id: 'draft-square',
     name: 'Draft Square Strategy',
     solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+        if (sudoku[solvingTile].value !== undefined) return sudoku
         const newSudoku = [...sudoku]
         const square = newSudoku.map((tm, i) => ({ ...tm, i })).filter((_, index) => getSquareId(index) === getSquareId(solvingTile))
         testedNumbers.forEach((testedNb) => {

@@ -84,7 +84,9 @@ const App = (): JSX.Element => {
             setSudoku(newSudoku)
             return
         }
+
         newSudoku[selectedTile].value = value
+        newSudoku[selectedTile].error = false
 
         draftHelpers.forEach((helper) => {
             helper.help(newSudoku, selectedTile)

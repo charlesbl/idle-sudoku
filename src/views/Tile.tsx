@@ -1,8 +1,8 @@
 import styled from 'styled-components'
 import DraftTile from './DraftTile'
-import { type TileModel } from './model/SudokuModel'
+import { type TileModel } from '../model/sudoku.model'
 
-const TileStyle = styled.div<{ $selected: boolean, $solving: boolean, $fixed: boolean }>`
+const TileStyle = styled.div<{ $selected: boolean, $solving: boolean, $fixed: boolean, $error: boolean }>`
     border: 1px solid white;
     width: 1em;
     height: 1em;
@@ -11,7 +11,7 @@ const TileStyle = styled.div<{ $selected: boolean, $solving: boolean, $fixed: bo
     align-items: center;
     cursor: pointer;
     background-color: ${props => props.$solving ? 'green' : props.$selected ? 'white' : 'transparent'};
-    color: ${props => props.$fixed ? 'grey' : props.$selected ? 'black' : 'white'};
+    color: ${props => props.$fixed ? 'grey' : props.$error ? 'red' : props.$selected ? 'black' : 'white'};
 `
 
 interface TileProps {
@@ -26,6 +26,7 @@ const Tile = (props: TileProps): JSX.Element => {
 
     return (
         <TileStyle
+            $error={props.tileModel.error}
             $fixed={props.tileModel.fixed}
             $selected={props.selected}
             $solving={props.solving}

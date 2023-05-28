@@ -39,7 +39,7 @@ export const useTick = ({
     const checkSolved = (): boolean =>
         sudoku !== undefined &&
         solution !== undefined &&
-        sudoku.every((tile, i) => solution[i].value === tile.value)
+        sudoku.every((tile, i) => solution[i] === tile.value)
     return (): void => {
         useEffect(() => {
             const solverInterval = setInterval(() => {
@@ -71,12 +71,12 @@ export const useTick = ({
                 if (solverTile === 80) {
                     nexStrategy()
                 }
-                if (sudoku[solverTile].value !== undefined) {
+                if (sudoku[solverTile].fixed) {
                     nextTile()
                     return
                 }
                 if (currentStrategy !== undefined) {
-                    const newSudoku = solve(currentStrategy.solver, sudoku, solverTile)
+                    const newSudoku = solve(currentStrategy.solver, sudoku, solverTile, solution)
                     setSudoku(newSudoku)
                 }
                 nextTile()

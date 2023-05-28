@@ -1,14 +1,13 @@
 import { type SudokuModel } from '../sudoku.model'
 
-export type Solver = (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]) => SudokuModel
+export type Solver = (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[], solution?: number[]) => SudokuModel
 export interface TestedNumber {
     index: number
     isDraft: boolean
 }
 
-export const solve = (solver: Solver, sudoku: SudokuModel, solvingTile: number): SudokuModel => {
-    if (sudoku[solvingTile].value !== undefined) return sudoku
+export const solve = (solver: Solver, sudoku: SudokuModel, solvingTile: number, solution?: number[]): SudokuModel => {
+    if (sudoku[solvingTile].fixed) return sudoku
     const testedNumbers = sudoku[solvingTile].draftNumbers.map((isDraft, i): TestedNumber => ({ index: i, isDraft })).filter((draftNb) => draftNb.isDraft)
-    if (testedNumbers.length === 0) return sudoku
-    return solver(sudoku, solvingTile, testedNumbers)
+    return solver(sudoku, solvingTile, testedNumbers, solution)
 }

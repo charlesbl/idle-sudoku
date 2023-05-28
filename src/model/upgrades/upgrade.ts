@@ -3,10 +3,11 @@ import { type DraftHelper } from '../draftHelpers/draftHelpers'
 import { lineDraftHelper } from '../draftHelpers/line'
 import { squareDraftHelper } from '../draftHelpers/square'
 import { columnSolver, draftColumnSolver } from '../solvers/column'
+import { errorTrackerSolver } from '../solvers/errorTracker'
 import { lastDraftSolver } from '../solvers/lastDraft'
 import { draftLineSolver, lineSolver } from '../solvers/line'
 import { draftSquareSolver, squareSolver } from '../solvers/square'
-import { type Strategy } from '../solvers/strategies'
+import { type Strategy } from '../solvers/strategy'
 
 export interface UpgradeModel {
     id: string
@@ -24,6 +25,7 @@ export const allUpgrades: UpgradeModel[] = [
 
     { id: 'set-all-drafts-on-start', name: 'Auto Draft', cost: 1, description: 'Set all drafts on start' },
 
+    { id: 'error-tracker', name: 'Error Tracker', cost: 1, description: 'Set tile on error if its not the solution', strategy: errorTrackerSolver },
     { id: 'line-solver', name: 'Line Strategy', cost: 1, description: 'Unlock the line strategy for the solver', strategy: lineSolver },
     { id: 'column-solver', name: 'Column Strategy', cost: 1, description: 'Unlock the column strategy for the solver', strategy: columnSolver },
     { id: 'square-solver', name: 'Square Strategy', cost: 1, description: 'Unlock the square strategy for the solver', strategy: squareSolver },
