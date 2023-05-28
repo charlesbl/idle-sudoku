@@ -1,16 +1,15 @@
 import { type PropsWithChildren, createContext, useContext, useState } from 'react'
 import type React from 'react'
-import { generateSudoku, type SudokuModel } from '../../model/sudoku.model'
+import { type CustomDifficulty, generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import { type UpgradeModel } from '../../model/upgrades/upgrade'
 import useLocalStorageState from 'use-local-storage-state'
 import { type Strategy } from '../../model/solvers/strategies'
-import { type Difficulty } from 'sudoku-gen/dist/types/difficulty.type'
 import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
 import { useUpgrades } from './upgrades.hook'
 import { useMoney } from './money.hook'
 
-const DIFFICULTY: Difficulty = 'easy'
+const DIFFICULTY: CustomDifficulty = 'very-easy'
 
 export interface SudokuContextModel {
     solution: SudokuModel | undefined
