@@ -3,7 +3,6 @@ import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 
-// TODO handle user error in normal mode (same number in row, column or square)
 // TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished
 
 const AppStyle = styled.div`
