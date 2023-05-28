@@ -3,6 +3,9 @@ import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 
+// TODO add strategy that merge all "remove draft" strategies and remove the one that are not needed
+// TODO addd strategy that merge all "set value" strategies and remove the one that are not needed
+// TODO add ultime strategy that set all draft possibilities (column, row, square) and disable all other "remove draft" strategies
 // TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished
 
 const AppStyle = styled.div`
@@ -94,10 +97,21 @@ const App = (): JSX.Element => {
         setSudoku(newSudoku)
     }
 
+    const handleBatchDraftChange = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+        if (selectedTile === undefined || sudoku === undefined) return
+        if (e.key === 'r') {
+            const newSudoku = [...sudoku]
+            const wipe = newSudoku[selectedTile].draftNumbers.every((draft) => draft)
+            newSudoku[selectedTile].draftNumbers = Array(9).fill(!wipe)
+            setSudoku([...sudoku])
+        }
+    }
+
     const handleOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         handleChangeDraftMode(e)
         handleSelectedTileDisplacement(e)
         handleChangeTileValue(e)
+        handleBatchDraftChange(e)
     }
 
     return (
