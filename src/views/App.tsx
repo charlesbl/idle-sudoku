@@ -1,7 +1,7 @@
 import styled from 'styled-components'
 import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
-import { useSudoku } from './hooks/SudokuContext'
+import { useSudoku } from './hooks/sudoku.context'
 
 const AppStyle = styled.div`
     display: flex;

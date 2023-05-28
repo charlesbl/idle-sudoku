@@ -1,6 +1,6 @@
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
-import { useSudoku } from './hooks/SudokuContext'
+import { useSudoku } from './hooks/sudoku.context'
 
 const UpgradesStyle = styled.div`
     text-align: left;   

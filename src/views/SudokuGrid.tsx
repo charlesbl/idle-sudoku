@@ -1,6 +1,6 @@
 import { styled } from 'styled-components'
 import Tile from './Tile'
-import { useSudoku } from './hooks/SudokuContext'
+import { useSudoku } from './hooks/sudoku.context'
 
 const GridStyle = styled.div`
     display: grid;

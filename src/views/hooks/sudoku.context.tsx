@@ -1,12 +1,13 @@
 import { type PropsWithChildren, createContext, useContext, useState } from 'react'
 import type React from 'react'
-import { generateSudoku, type SudokuModel } from '../../model/SudokuModel'
+import { generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import { allUpgrades, type UpgradeModel } from '../../model/upgrades/upgrade'
 import useLocalStorageState from 'use-local-storage-state'
 import { type Strategy } from '../../model/solvers/strategies'
 import { type Difficulty } from 'sudoku-gen/dist/types/difficulty.type'
-import { useTick } from './tick'
+import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
+import { useUpgrades } from './upgrades.hook'
 
 const DIFFICULTY: Difficulty = 'easy'
 
@@ -41,7 +42,8 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: true })
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
-    const [upgradeIds, setUpgradeIds] = useLocalStorageState<string[]>('upgradeIds', { defaultValue: allUpgrades.map(upgrade => upgrade.id) })
+
+    const { upgrades, setUpgrades } = useUpgrades()
 
     const {
         setCurrentStrategy,
@@ -49,9 +51,6 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         currentStrategy,
         addStategy
     } = useStrategy()
-
-    const upgrades = allUpgrades.filter(upgrade => upgradeIds.includes(upgrade.id))
-    const setUpgrades = (upgrades: UpgradeModel[]): void => { setUpgradeIds(upgrades.map(upgrade => upgrade.id)) }
 
     const reset = (): void => {
         const [puzzle, solution] = generateSudoku(DIFFICULTY)
@@ -93,7 +92,8 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolverTile
     }
 
-    useTick(value)
+    const tickeffect = useTick(value)
+    tickeffect()
 
     return (
         <SudokuContext.Provider value={value}>

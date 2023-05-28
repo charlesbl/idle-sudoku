@@ -1,4 +1,4 @@
-import { type SudokuModel } from '../SudokuModel'
+import { type SudokuModel } from '../sudoku.model'
 import { type TestedNumber } from './solver'
 import { type Strategy } from './strategies'
 

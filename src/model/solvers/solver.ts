@@ -1,4 +1,4 @@
-import { type SudokuModel } from '../SudokuModel'
+import { type SudokuModel } from '../sudoku.model'
 
 export type SolverStrategy = (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]) => SudokuModel
 export interface TestedNumber {
