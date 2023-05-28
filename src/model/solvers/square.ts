@@ -1,3 +1,4 @@
+import { getSquareId } from '../../utils/utils'
 import { type SudokuModel } from '../sudoku.model'
 import { type TestedNumber } from './solver'
 import { type Strategy } from './strategies'
@@ -29,5 +30,3 @@ export const draftSquareSolver: Strategy = {
         return newSudoku
     }
 }
-
-const getSquareId = (tileId: number): number => (Math.floor((tileId % 27) / 3) % 3) + Math.floor(tileId / 27) * 3

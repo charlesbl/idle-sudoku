@@ -1,6 +1,6 @@
 import useLocalStorageState from 'use-local-storage-state'
 
-const START_MONEY = 0
+const START_MONEY = 10
 
 export interface MoneyHook {
     money: number

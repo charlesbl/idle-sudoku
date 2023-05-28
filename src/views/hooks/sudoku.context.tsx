@@ -8,6 +8,8 @@ import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
 import { useUpgrades } from './upgrades.hook'
 import { useMoney } from './money.hook'
+import { useDraftHelpers } from './draftHelpers.hook'
+import { type DraftHelper } from '../../model/draftHelpers/draftHelpers'
 
 const DIFFICULTY: CustomDifficulty = 'very-easy'
 
@@ -34,6 +36,8 @@ export interface SudokuContextModel {
     money: number
     addMoney: (amount: number) => void
     purchaseUpgrade: (upgrade: UpgradeModel) => void
+    draftHelpers: DraftHelper[]
+    addDraftHelper: (id: string) => void
 }
 
 const SudokuContext = createContext<SudokuContextModel>({} as any)
@@ -45,6 +49,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: true })
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
+    const [draftOnStart, setDraftOnStart] = useLocalStorageState<boolean>('draftOnStart', { defaultValue: false })
 
     const { upgrades, setUpgrades } = useUpgrades()
 
@@ -52,8 +57,11 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const { money, addMoney, spend } = useMoney()
 
+    const { draftHelpers, addDraftHelper } = useDraftHelpers()
+
     const reset = (): void => {
         const [puzzle, solution] = generateSudoku(DIFFICULTY)
+        if (draftOnStart) puzzle.forEach((tile) => { tile.draftNumbers = Array(9).fill(true) })
         setSudoku(puzzle)
         setSolution(solution)
         setIsSolved(false)
@@ -66,6 +74,12 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         if (!spent) return
         if (upgrade.strategy !== undefined) {
             addStategy(upgrade.strategy.id)
+        }
+        if (upgrade.draftHelper !== undefined) {
+            addDraftHelper(upgrade.draftHelper.id)
+        }
+        if (upgrade.id === 'set-all-drafts-on-start') {
+            setDraftOnStart(true)
         }
         setUpgrades(upgrades.filter((u) => u.id !== upgrade.id))
     }
@@ -101,7 +115,9 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolverTile,
         money,
         addMoney,
-        purchaseUpgrade
+        purchaseUpgrade,
+        draftHelpers,
+        addDraftHelper
     }
 
     const tickeffect = useTick(value)

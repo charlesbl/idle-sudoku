@@ -34,7 +34,8 @@ const App = (): JSX.Element => {
         currentStrategy,
         cheatSolve,
         reset,
-        money
+        money,
+        draftHelpers
     } = useSudoku()
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -76,6 +77,11 @@ const App = (): JSX.Element => {
         if (sudoku === undefined || selectedTile === undefined || sudoku[selectedTile].fixed) return
         const newSudoku = [...sudoku]
         newSudoku[selectedTile].value = value
+
+        draftHelpers.forEach((helper) => {
+            helper.help(newSudoku, selectedTile)
+        })
+
         setSudoku(newSudoku)
     }
 
