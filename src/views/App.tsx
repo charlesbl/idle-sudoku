@@ -7,6 +7,7 @@ import { useSudoku } from './hooks/sudoku.context'
 // TODO addd strategy that merge all "set value" strategies and remove the one that are not needed
 // TODO add ultime strategy that set all draft possibilities (column, row, square) and disable all other "remove draft" strategies
 // TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished
+// TODO add selector for difficulty. more difficult = more money.
 
 const AppStyle = styled.div`
     display: flex;
