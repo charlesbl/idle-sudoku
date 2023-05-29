@@ -1,13 +1,7 @@
-import { columnDraftHelper } from '../draftHelpers/column'
-import { type DraftHelper } from '../draftHelpers/draftHelpers'
-import { lineDraftHelper } from '../draftHelpers/line'
-import { squareDraftHelper } from '../draftHelpers/square'
-import { columnSolver, draftColumnSolver } from '../solvers/column'
+import { lineDraftHelper, type DraftHelper, columnDraftHelper, squareDraftHelper } from '../draftHelpers/draftHelpers'
 import { errorTrackerSolver } from '../solvers/errorTracker'
-import { lastDraftSolver } from '../solvers/lastDraft'
-import { draftLineSolver, lineSolver } from '../solvers/line'
-import { removeDraftSolver } from '../solvers/removeDrafts'
-import { draftSquareSolver, squareSolver } from '../solvers/square'
+import { lastColumnDraftStrategy, lastDraftStrategy, lastLineDraftStrategy, lastSquareDraftStrategy, lastTileDraftStrategy } from '../solvers/lastDraft'
+import { removeAllDraftStrategy, removeColumnDraftStrategy, removeLineDraftStrategy, removeSquareDraftStrategy } from '../solvers/removeDrafts'
 import { type Strategy } from '../solvers/strategy'
 
 export interface UpgradeModel {
@@ -19,22 +13,55 @@ export interface UpgradeModel {
     draftHelper?: DraftHelper
 }
 
+const createStrategyUpgrade = (strategy: Strategy, description: string, cost: number): UpgradeModel => ({
+    id: `${strategy.id}-upgrade`,
+    name: strategy.name,
+    cost,
+    description,
+    strategy
+})
+
 export const allUpgrades: UpgradeModel[] = [
-    { id: 'line-draft-helper', name: 'Line Draft Helper', cost: 1, description: 'Unlock the line draft helper', draftHelper: lineDraftHelper },
-    { id: 'column-draft-helper', name: 'Column Draft Helper', cost: 1, description: 'Unlock the column draft helper', draftHelper: columnDraftHelper },
-    { id: 'square-draft-helper', name: 'Square Draft Helper', cost: 1, description: 'Unlock the square draft helper', draftHelper: squareDraftHelper },
+    // draft helpers
+    {
+        id: `${lineDraftHelper.id}-upgrade`,
+        name: 'Line draft helper',
+        cost: 1,
+        description: 'When you place a number, remove this number draft on line',
+        draftHelper: lineDraftHelper
+    },
+    {
+        id: `${columnDraftHelper.id}-upgrade`,
+        name: 'Column draft helper',
+        cost: 1,
+        description: 'When you place a number, remove this number draft on column',
+        draftHelper: columnDraftHelper
+    },
+    {
+        id: `${squareDraftHelper.id}-upgrade`,
+        name: 'Square draft helper',
+        cost: 1,
+        description: 'When you place a number, remove this number draft on square',
+        draftHelper: squareDraftHelper
+    },
+    // miscs
+    {
+        id: 'set-all-drafts-on-start',
+        name: 'Auto draft',
+        cost: 1,
+        description: 'Set all drafts on start'
+    },
+    createStrategyUpgrade(errorTrackerSolver, 'Set tile on error if its not the solution', 1),
 
-    { id: 'set-all-drafts-on-start', name: 'Auto Draft', cost: 1, description: 'Set all drafts on start' },
-
-    { id: 'error-tracker', name: 'Error Tracker', cost: 1, description: 'Set tile on error if its not the solution', strategy: errorTrackerSolver },
-
-    { id: 'line-solver', name: 'Line Strategy', cost: 1, description: 'Unlock the line strategy for the solver', strategy: lineSolver },
-    { id: 'column-solver', name: 'Column Strategy', cost: 1, description: 'Unlock the column strategy for the solver', strategy: columnSolver },
-    { id: 'square-solver', name: 'Square Strategy', cost: 1, description: 'Unlock the square strategy for the solver', strategy: squareSolver },
-    { id: 'remove-draft-solver', name: 'Remove Draft Strategy', cost: 1, description: 'Unlock the remove draft strategy for the solver', strategy: removeDraftSolver },
-
-    { id: 'draft-line-solver', name: 'Draft line Strategy', cost: 1, description: 'Unlock the draft line strategy for the solver', strategy: draftLineSolver },
-    { id: 'draft-column-solver', name: 'Draft column Strategy', cost: 1, description: 'Unlock the draft column strategy for the solver', strategy: draftColumnSolver },
-    { id: 'draft-square-solver', name: 'Draft square Strategy', cost: 1, description: 'Unlock the draft square strategy for the solver', strategy: draftSquareSolver },
-    { id: 'last-draft-solver', name: 'Last Draft Strategy', cost: 1, description: 'Unlock the last draft strategy for the solver', strategy: lastDraftSolver }
+    // remove drafts
+    createStrategyUpgrade(removeLineDraftStrategy, 'Remove impossible draft on line', 1),
+    createStrategyUpgrade(removeColumnDraftStrategy, 'Remove impossible draft on column', 1),
+    createStrategyUpgrade(removeSquareDraftStrategy, 'Remove impossible draft on square', 1),
+    createStrategyUpgrade(removeAllDraftStrategy, 'Remove impossible draft', 1),
+    // last draft
+    createStrategyUpgrade(lastLineDraftStrategy, 'Set number if the draft is available only in one tile on the line', 1),
+    createStrategyUpgrade(lastColumnDraftStrategy, 'Set number if the draft is available only in one tile on the column', 1),
+    createStrategyUpgrade(lastSquareDraftStrategy, 'Set number if the draft is available only in one tile on the square', 1),
+    createStrategyUpgrade(lastTileDraftStrategy, 'Set number if its the last draft of the tile', 1),
+    createStrategyUpgrade(lastDraftStrategy, 'Set number if the draft is available only in one tile on the line / colmun / square or if its the last draft of the tile', 1)
 ]

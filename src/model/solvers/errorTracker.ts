@@ -4,7 +4,7 @@ import { type Strategy } from './strategy'
 
 export const errorTrackerSolver: Strategy = {
     id: 'error-tracker',
-    name: 'Error Tracker Strategy',
+    name: 'Error Tracker',
     solver: (sudoku: SudokuModel, solvingTile: number, _: TestedNumber[], solution?: number[]) => {
         if (solution === undefined) throw new Error('Solution is undefined')
         if (sudoku[solvingTile].value === undefined) {

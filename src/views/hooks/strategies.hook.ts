@@ -6,7 +6,7 @@ interface StrategyHook {
     strategies: Strategy[]
     currentStrategy: Strategy | undefined
     setCurrentStrategy: (strategy?: Strategy) => void
-    addStategy: (id: string) => void
+    setStrategies: (strategies: Strategy[]) => void
 }
 
 export const useStrategy = (): StrategyHook => {
@@ -14,8 +14,9 @@ export const useStrategy = (): StrategyHook => {
     const [strategyIds, setStrategyIds] = useLocalStorageState<string[]>('strategyIds', { defaultValue: [] })
 
     const getStrategy = (id: string): Strategy | undefined => allUpgrades.find(upgrade => upgrade.strategy?.id === id)?.strategy
-    const addStategy = (id: string): void => { setStrategyIds([...strategyIds, id]) }
-    const strategies = strategyIds.map(id => getStrategy(id)) as Strategy[]
+    const mapStrategyIds = (ids: string[]): Strategy[] => ids.map(id => getStrategy(id)) as Strategy[]
+    const strategies = mapStrategyIds(strategyIds)
+    const setStrategies = (strategies: Strategy[]): void => { setStrategyIds(strategies.map(strategy => strategy.id)) }
 
     const currentStrategy = currentStrategyId !== undefined ? getStrategy(currentStrategyId) : undefined
     const setCurrentStrategy = (strategy?: Strategy): void => { setCurrentStrategyId(strategy?.id) }
@@ -24,6 +25,6 @@ export const useStrategy = (): StrategyHook => {
         strategies,
         currentStrategy,
         setCurrentStrategy,
-        addStategy
+        setStrategies
     }
 }

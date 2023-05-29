@@ -23,7 +23,6 @@ export interface SudokuContextModel {
     draftMode: boolean
     setDraftMode: React.Dispatch<React.SetStateAction<boolean>>
     strategies: Strategy[]
-    addStategy: (id: string) => void
     currentStrategy: Strategy | undefined
     setCurrentStrategy: (strategy: Strategy) => void
     upgrades: UpgradeModel[]
@@ -53,7 +52,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const { upgrades, setUpgrades } = useUpgrades()
 
-    const { setCurrentStrategy, strategies, currentStrategy, addStategy } = useStrategy()
+    const { setCurrentStrategy, strategies, currentStrategy, setStrategies } = useStrategy()
 
     const { money, addMoney, spend } = useMoney()
 
@@ -73,7 +72,12 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         const spent = spend(upgrade.cost)
         if (!spent) return
         if (upgrade.strategy !== undefined) {
-            addStategy(upgrade.strategy.id)
+            let newStrategies = [...strategies, upgrade.strategy]
+            if (upgrade.strategy.overrideStrategies !== undefined) {
+                const removeStrategies = upgrade.strategy.overrideStrategies
+                newStrategies = newStrategies.filter(s => !removeStrategies.includes(s))
+            }
+            setStrategies(newStrategies)
         }
         if (upgrade.draftHelper !== undefined) {
             addDraftHelper(upgrade.draftHelper.id)
@@ -104,7 +108,6 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setDraftMode,
         strategies,
         currentStrategy,
-        addStategy,
         upgrades,
         setUpgrades,
         cheatSolve,

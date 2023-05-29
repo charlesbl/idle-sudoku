@@ -4,4 +4,5 @@ export interface Strategy {
     id: string
     name: string
     solver: Solver
+    overrideStrategies?: Strategy[]
 }
