@@ -171,7 +171,12 @@ const App = (): JSX.Element => {
                         <div key={strategy.id}>
                             {strategy.id === currentStrategy?.id ? '-> ' : ''}
 
-                            <button onClick={() => { setCurrentStrategy(strategy) }}>{strategy.name}</button>
+                            <button
+                                disabled={currentStrategy !== undefined}
+                                onClick={() => { setCurrentStrategy(strategy) }}
+                            >
+                                {strategy.name}
+                            </button>
                         </div>
                     ))}
                 </div>

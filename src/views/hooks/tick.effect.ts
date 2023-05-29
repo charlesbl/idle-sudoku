@@ -10,7 +10,6 @@ export const useTick = ({
     setSudoku,
     solverTile,
     setCurrentStrategy,
-    strategies,
     currentStrategy,
     setSolverTile,
     isSolved,
@@ -25,15 +24,6 @@ export const useTick = ({
         // const remainingIds = sudoku?.map((tile, i) => ({ ...tile, i })).filter(tile => tile.value === undefined).map(tile => tile.i)
         // if (remainingIds === undefined) return
         // setSolverTile(remainingIds[Math.floor(Math.random() * remainingIds.length)])
-    }
-
-    const nexStrategy = (): void => {
-        if (strategies.length === 0) return
-        if (currentStrategy === undefined) {
-            setCurrentStrategy(strategies[0])
-            return
-        }
-        setCurrentStrategy(strategies[(strategies.indexOf(currentStrategy) + 1) % strategies.length])
     }
 
     const checkSolved = (): boolean =>
@@ -65,10 +55,6 @@ export const useTick = ({
                     return
                 }
                 if (solverTile === undefined) {
-                    return
-                }
-                if (sudoku[solverTile].fixed) {
-                    nextTile()
                     return
                 }
                 if (currentStrategy !== undefined) {
