@@ -11,7 +11,7 @@ import { useMoney } from './money.hook'
 import { useDraftHelpers } from './draftHelpers.hook'
 import { type DraftHelper } from '../../model/draftHelpers/draftHelpers'
 
-const DIFFICULTY: CustomDifficulty = 'medium'
+const DIFFICULTY: CustomDifficulty = 'hard'
 
 export interface SudokuContextModel {
     solution: number[] | undefined

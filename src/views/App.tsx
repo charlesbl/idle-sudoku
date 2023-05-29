@@ -3,9 +3,9 @@ import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 
-// TODO add ultime strategy that set all draft possibilities (column, row, square) and disable all other "remove draft" strategies
-// TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished
+// TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished.
 // TODO add selector for difficulty. more difficult = more money.
+// TODO prevent buying strategy that has been removed by an upgrade.
 
 const AppStyle = styled.div`
     display: flex;

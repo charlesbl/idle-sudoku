@@ -2,6 +2,7 @@ import { lineDraftHelper, type DraftHelper, columnDraftHelper, squareDraftHelper
 import { errorTrackerSolver } from '../solvers/errorTracker'
 import { lastColumnDraftStrategy, lastDraftStrategy, lastLineDraftStrategy, lastSquareDraftStrategy, lastTileDraftStrategy } from '../solvers/lastDraft'
 import { removeAllDraftStrategy, removeColumnDraftStrategy, removeLineDraftStrategy, removeSquareDraftStrategy } from '../solvers/removeDrafts'
+import { setDraftStrategy } from '../solvers/setDrafts'
 import { type Strategy } from '../solvers/strategy'
 
 export interface UpgradeModel {
@@ -52,12 +53,13 @@ export const allUpgrades: UpgradeModel[] = [
         description: 'Set all drafts on start'
     },
     createStrategyUpgrade(errorTrackerSolver, 'Set tile on error if its not the solution', 1),
-
     // remove drafts
     createStrategyUpgrade(removeLineDraftStrategy, 'Remove impossible draft on line', 1),
     createStrategyUpgrade(removeColumnDraftStrategy, 'Remove impossible draft on column', 1),
     createStrategyUpgrade(removeSquareDraftStrategy, 'Remove impossible draft on square', 1),
     createStrategyUpgrade(removeAllDraftStrategy, 'Remove impossible draft', 1),
+    // set draft
+    createStrategyUpgrade(setDraftStrategy, 'Set all drafts', 1),
     // last draft
     createStrategyUpgrade(lastLineDraftStrategy, 'Set number if the draft is available only in one tile on the line', 1),
     createStrategyUpgrade(lastColumnDraftStrategy, 'Set number if the draft is available only in one tile on the column', 1),
