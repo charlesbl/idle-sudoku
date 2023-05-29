@@ -39,7 +39,8 @@ const App = (): JSX.Element => {
         cheatSolve,
         reset,
         money,
-        draftHelpers
+        draftHelpers,
+        setCurrentStrategy
     } = useSudoku()
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -170,7 +171,7 @@ const App = (): JSX.Element => {
                         <div key={strategy.id}>
                             {strategy.id === currentStrategy?.id ? '-> ' : ''}
 
-                            {strategy.id}
+                            <button onClick={() => { setCurrentStrategy(strategy) }}>{strategy.name}</button>
                         </div>
                     ))}
                 </div>

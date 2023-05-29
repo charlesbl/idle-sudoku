@@ -60,16 +60,12 @@ export const useTick = ({
                     addMoney(1)
                     return
                 }
-                if (currentStrategy === undefined) {
-                    nexStrategy()
-                    return
-                }
-                if (solverTile === undefined) {
+                if (currentStrategy !== undefined && solverTile === undefined) {
                     setSolverTile(0)
                     return
                 }
-                if (solverTile === 80) {
-                    nexStrategy()
+                if (solverTile === undefined) {
+                    return
                 }
                 if (sudoku[solverTile].fixed) {
                     nextTile()
@@ -78,6 +74,11 @@ export const useTick = ({
                 if (currentStrategy !== undefined) {
                     const newSudoku = solve(currentStrategy.solver, sudoku, solverTile, solution)
                     setSudoku(newSudoku)
+                }
+                if (solverTile === 80) {
+                    setCurrentStrategy(undefined)
+                    setSolverTile(undefined)
+                    return
                 }
                 nextTile()
             }, SOLVER_TICK_TIME)

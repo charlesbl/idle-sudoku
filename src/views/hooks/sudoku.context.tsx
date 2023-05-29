@@ -24,7 +24,7 @@ export interface SudokuContextModel {
     setDraftMode: React.Dispatch<React.SetStateAction<boolean>>
     strategies: Strategy[]
     currentStrategy: Strategy | undefined
-    setCurrentStrategy: (strategy: Strategy) => void
+    setCurrentStrategy: (strategy?: Strategy) => void
     upgrades: UpgradeModel[]
     setUpgrades: (upgrades: UpgradeModel[]) => void
     cheatSolve: () => void
