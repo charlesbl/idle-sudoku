@@ -4,14 +4,25 @@ import { useSudoku } from './hooks/sudoku.context'
 
 const GridStyle = styled.div`
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border: 2px solid white;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    aspect-ratio: 1;
+    width: 100%;
+    overflow: hidden;
+    border: 3px solid #f8fafc;
+    border-radius: 6px;
+    background: #070b10;
+    box-shadow:
+        0 0 0 1px rgb(81 214 194 / 25%),
+        inset 0 0 30px rgb(0 0 0 / 55%);
 `
 
 const SubGridStyle = styled.div`
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border: 2px solid white;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+    min-height: 0;
+    border: 2px solid #f8fafc;
 `
 
 const SudokuGrid = (): JSX.Element => {

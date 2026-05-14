@@ -3,6 +3,17 @@ import { removeLineDraftStrategy, removeColumnDraftStrategy, removeSquareDraftSt
 import { type TestedNumber } from './solver'
 import { type Strategy } from './strategy'
 
+export const autoDraftStrategy: Strategy = {
+    id: 'auto-draft',
+    name: 'Auto draft',
+    solver: (sudoku: SudokuModel, solvingTile: number): SudokuModel => {
+        if (sudoku[solvingTile].value !== undefined) return sudoku
+        const newSudoku = [...sudoku]
+        newSudoku[solvingTile].draftNumbers = Array(9).fill(true)
+        return newSudoku
+    }
+}
+
 export const setDraftStrategy: Strategy = {
     id: 'set-draft',
     name: 'set drafts strategy',
@@ -15,5 +26,5 @@ export const setDraftStrategy: Strategy = {
         newSudoku = removeSquareDraftStrategy.solver(newSudoku, solvingTile, testedNumbers)
         return newSudoku
     },
-    overrideStrategies: [removeLineDraftStrategy, removeColumnDraftStrategy, removeSquareDraftStrategy, removeAllDraftStrategy]
+    overrideStrategies: [autoDraftStrategy, removeLineDraftStrategy, removeColumnDraftStrategy, removeSquareDraftStrategy, removeAllDraftStrategy]
 }

@@ -12,6 +12,9 @@ export interface TileModel {
 
 export type SudokuModel = TileModel[]
 
+export const cloneSudoku = (sudoku: SudokuModel): SudokuModel =>
+    sudoku.map(tile => ({ ...tile, draftNumbers: [...tile.draftNumbers] }))
+
 export const generateSudoku = (difficulty?: CustomDifficulty): [SudokuModel, number[]] => {
     const sudokugen = getSudoku(difficulty === 'very-easy' ? 'easy' : difficulty)
     const puzzle = sudokugen.puzzle.split('').map((value) => {

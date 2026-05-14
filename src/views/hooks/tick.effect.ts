@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { type SudokuContextModel } from './sudoku.context'
 import { solve } from '../../model/solvers/solver'
+import { cloneSudoku } from '../../model/sudoku.model'
 
 const SOLVER_TICK_TIME = 10
 
@@ -58,7 +59,7 @@ export const useTick = ({
                     return
                 }
                 if (currentStrategy !== undefined) {
-                    const newSudoku = solve(currentStrategy.solver, sudoku, solverTile, solution)
+                    const newSudoku = solve(currentStrategy.solver, cloneSudoku(sudoku), solverTile, solution)
                     setSudoku(newSudoku)
                 }
                 if (solverTile === 80) {

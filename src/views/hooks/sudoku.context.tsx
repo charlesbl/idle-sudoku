@@ -1,4 +1,4 @@
-import { type PropsWithChildren, createContext, useContext, useState } from 'react'
+import { type PropsWithChildren, type SetStateAction, createContext, useContext, useState } from 'react'
 import type React from 'react'
 import { type CustomDifficulty, generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import { type UpgradeModel } from '../../model/upgrades/upgrade'
@@ -8,8 +8,9 @@ import { useTick } from './tick.effect'
 import { useStrategy } from './strategies.hook'
 import { useUpgrades } from './upgrades.hook'
 import { useMoney } from './money.hook'
-import { useDraftHelpers } from './draftHelpers.hook'
+import { trackSudokuErrors } from '../../model/solvers/errorTracker'
 import { type DraftHelper } from '../../model/draftHelpers/draftHelpers'
+import { useDraftHelpers } from './draftHelpers.hook'
 
 const DIFFICULTY: CustomDifficulty = 'medium'
 
@@ -42,26 +43,40 @@ export interface SudokuContextModel {
 const SudokuContext = createContext<SudokuContextModel>({} as any)
 
 export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
-    const [sudoku, setSudoku] = useLocalStorageState<SudokuModel | undefined>('sudoku')
+    const [sudoku, setStoredSudoku] = useLocalStorageState<SudokuModel | undefined>('sudoku')
     const [solution, setSolution] = useLocalStorageState<number[] | undefined>('solution')
     const [selectedTile, setSelectedTile] = useState<number | undefined>(undefined)
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: true })
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
-    const [draftOnStart, setDraftOnStart] = useLocalStorageState<boolean>('draftOnStart', { defaultValue: false })
 
     const { upgrades, setUpgrades } = useUpgrades()
 
     const { setCurrentStrategy, strategies, currentStrategy, setStrategies } = useStrategy()
 
     const { money, addMoney, spend } = useMoney()
-
     const { draftHelpers, addDraftHelper } = useDraftHelpers()
+
+    const hasValueUpdate = (nextSudoku: SudokuModel, previousSudoku?: SudokuModel): boolean =>
+        previousSudoku === undefined ||
+        nextSudoku.some((tile, index) => tile.value !== previousSudoku[index]?.value)
+
+    const setSudoku: React.Dispatch<SetStateAction<SudokuModel | undefined>> = (action) => {
+        setStoredSudoku((previousSudoku) => {
+            const nextSudoku = typeof action === 'function'
+                ? action(previousSudoku)
+                : action
+
+            if (nextSudoku === undefined || solution === undefined) return nextSudoku
+            if (!hasValueUpdate(nextSudoku, previousSudoku)) return nextSudoku
+
+            return trackSudokuErrors(nextSudoku, solution)
+        })
+    }
 
     const reset = (): void => {
         const [puzzle, solution] = generateSudoku(DIFFICULTY)
-        if (draftOnStart) puzzle.forEach((tile) => { tile.draftNumbers = Array(9).fill(true) })
-        setSudoku(puzzle)
+        setStoredSudoku(puzzle)
         setSolution(solution)
         setIsSolved(false)
         setSolverTile(undefined)
@@ -74,26 +89,28 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         if (upgrade.strategy !== undefined) {
             let newStrategies = [...strategies, upgrade.strategy]
             if (upgrade.strategy.overrideStrategies !== undefined) {
-                const removeStrategies = upgrade.strategy.overrideStrategies
-                newStrategies = newStrategies.filter(s => !removeStrategies.includes(s))
+                const removeStrategyIds = upgrade.strategy.overrideStrategies.map(strategy => strategy.id)
+                newStrategies = newStrategies.filter(strategy => !removeStrategyIds.includes(strategy.id))
             }
             setStrategies(newStrategies)
         }
         if (upgrade.draftHelper !== undefined) {
             addDraftHelper(upgrade.draftHelper.id)
         }
-        if (upgrade.id === 'set-all-drafts-on-start') {
-            setDraftOnStart(true)
-        }
-        setUpgrades(upgrades.filter((u) => u.id !== upgrade.id))
+        const overrideStrategyIds = upgrade.strategy?.overrideStrategies?.map(strategy => strategy.id) ?? []
+        setUpgrades(upgrades.filter((u) =>
+            u.id !== upgrade.id &&
+            (u.strategy === undefined || !overrideStrategyIds.includes(u.strategy.id))
+        ))
     }
 
     const cheatSolve = (): void => {
         if (solution === undefined || sudoku === undefined) return
-        const newSudoku = [...sudoku]
-        newSudoku.forEach((tile, i) => {
-            tile.value = solution[i]
-        })
+        const newSudoku = sudoku.map((tile, i) => ({
+            ...tile,
+            value: solution[i],
+            error: false
+        }))
         setSudoku(newSudoku)
     }
 

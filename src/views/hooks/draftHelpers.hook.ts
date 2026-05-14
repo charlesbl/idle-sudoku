@@ -1,5 +1,5 @@
 import useLocalStorageState from 'use-local-storage-state'
-import { type DraftHelper, allDraftHelpers } from '../../model/draftHelpers/draftHelpers'
+import { allDraftHelpers, type DraftHelper } from '../../model/draftHelpers/draftHelpers'
 
 interface DraftHelperHook {
     draftHelpers: DraftHelper[]
@@ -9,9 +9,14 @@ interface DraftHelperHook {
 export const useDraftHelpers = (): DraftHelperHook => {
     const [draftHelperIds, setDraftHelperIds] = useLocalStorageState<string[]>('draftHelperIds', { defaultValue: [] })
 
-    const getDraftHelper = (id: string): DraftHelper | undefined => allDraftHelpers.find(strategy => strategy.id === id)
-    const addDraftHelper = (id: string): void => { setDraftHelperIds([...draftHelperIds, id]) }
-    const draftHelpers = draftHelperIds.map(id => getDraftHelper(id)) as DraftHelper[]
+    const getDraftHelper = (id: string): DraftHelper | undefined => allDraftHelpers.find(helper => helper.id === id)
+    const addDraftHelper = (id: string): void => {
+        if (draftHelperIds.includes(id)) return
+        setDraftHelperIds([...draftHelperIds, id])
+    }
+    const draftHelpers = draftHelperIds
+        .map(id => getDraftHelper(id))
+        .filter((helper): helper is DraftHelper => helper !== undefined)
 
     return {
         draftHelpers,
