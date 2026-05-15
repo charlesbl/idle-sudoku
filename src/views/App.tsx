@@ -71,7 +71,7 @@ const SudokuLayout = styled.main`
 
 const Infos = styled.div`
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
     gap: 0.75rem;
     width: min(100%, 620px);
     margin-bottom: 1rem;
@@ -262,7 +262,11 @@ const StrategyRow = styled.div<{ $active: boolean }>`
 `
 
 const StrategyButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     flex: 1;
+    gap: 0.5rem;
     min-height: 2.3rem;
     padding: 0 0.75rem;
     border: 1px solid rgb(255 255 255 / 10%);
@@ -290,6 +294,20 @@ const StrategyButton = styled.button`
     }
 `
 
+const StrategyQueueBadge = styled.span`
+    display: inline-grid;
+    flex: 0 0 auto;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    place-items: center;
+    border: 1px solid rgb(81 214 194 / 35%);
+    border-radius: 999px;
+    color: var(--accent-strong);
+    font-size: 0.72rem;
+    font-weight: 900;
+    background: rgb(81 214 194 / 13%);
+`
+
 const EmptyState = styled.div`
     color: var(--text-muted);
     font-size: 0.92rem;
@@ -305,12 +323,20 @@ const App = (): JSX.Element => {
         setSelectedTile,
         strategies,
         currentStrategy,
+        strategyQueue,
         cheatSolve,
         reset,
         money,
         draftHelpers,
-        setCurrentStrategy
+        setCurrentStrategy,
+        queueStrategy,
+        hasUpgradeFeature,
+        autoStrategyQueueEnabled,
+        setAutoStrategyQueueEnabled
     } = useSudoku()
+    const canQueueStrategies = hasUpgradeFeature('strategyQueue') || hasUpgradeFeature('autoStrategyQueue')
+    const hasAutoQueueUpgrade = hasUpgradeFeature('autoStrategyQueue')
+    const autoQueueStrategies = hasAutoQueueUpgrade && autoStrategyQueueEnabled
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key !== ' ' && e.key !== '0') return
@@ -420,6 +446,18 @@ const App = (): JSX.Element => {
                             </DraftStatus>
                         </InfoValue>
                     </InfoCard>
+
+                    {canQueueStrategies && (
+                        <InfoCard>
+                            <InfoLabel>Queue</InfoLabel>
+
+                            <InfoValue $accent={autoQueueStrategies}>
+                                {hasAutoQueueUpgrade
+                                    ? `${autoQueueStrategies ? 'auto' : 'manual'} (${strategyQueue.length})`
+                                    : strategyQueue.length}
+                            </InfoValue>
+                        </InfoCard>
+                    )}
                 </Infos>
 
                 <BoardShell>
@@ -440,6 +478,16 @@ const App = (): JSX.Element => {
                         New
                     </ActionButton>
 
+                    {hasAutoQueueUpgrade && (
+                        <ActionButton
+                            onClick={() => { setAutoStrategyQueueEnabled(!autoStrategyQueueEnabled) }}
+                        >
+                            Auto queue:
+
+                            {autoStrategyQueueEnabled ? 'On' : 'Off'}
+                        </ActionButton>
+                    )}
+
                     <ActionButton onClick={() => { localStorage.clear() }}>Clear save</ActionButton>
                 </ActionBar>
             </SudokuLayout>
@@ -451,19 +499,35 @@ const App = (): JSX.Element => {
 
                 <StrategyList>
                     {strategies.length > 0
-                        ? strategies.map((strategy) => (
-                            <StrategyRow
-                                $active={strategy.id === currentStrategy?.id}
-                                key={strategy.id}
-                            >
-                                <StrategyButton
-                                    disabled={currentStrategy !== undefined}
-                                    onClick={() => { setCurrentStrategy(strategy) }}
+                        ? strategies.map((strategy) => {
+                            const queuedCount = strategyQueue.filter(queuedStrategy => queuedStrategy.id === strategy.id).length
+
+                            return (
+                                <StrategyRow
+                                    $active={strategy.id === currentStrategy?.id}
+                                    key={strategy.id}
                                 >
-                                    {strategy.name}
-                                </StrategyButton>
-                            </StrategyRow>
-                        ))
+                                    <StrategyButton
+                                        disabled={!canQueueStrategies && currentStrategy !== undefined}
+                                        onClick={() => {
+                                            if (canQueueStrategies) {
+                                                queueStrategy(strategy)
+                                                return
+                                            }
+                                            setCurrentStrategy(strategy)
+                                        }}
+                                    >
+                                        <span>{strategy.name}</span>
+
+                                        {queuedCount > 0 && (
+                                            <StrategyQueueBadge>
+                                                {queuedCount}
+                                            </StrategyQueueBadge>
+                                        )}
+                                    </StrategyButton>
+                                </StrategyRow>
+                            )
+                        })
                         : <EmptyState>No strategies unlocked</EmptyState>}
                 </StrategyList>
             </StrategyPanel>

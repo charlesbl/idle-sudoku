@@ -12,11 +12,16 @@ export const useTick = ({
     solverTile,
     setCurrentStrategy,
     currentStrategy,
+    strategies,
+    strategyQueue,
+    setStrategyQueue,
     setSolverTile,
     isSolved,
     setIsSolved,
     reset,
-    upgrades,
+    upgradeFeatures,
+    autoStrategyQueueEnabled,
+    strategyDraftHelpers,
     addMoney
 }: SudokuContextModel): () => void => {
     const nextTile = (): void => {
@@ -48,8 +53,24 @@ export const useTick = ({
                 if (checkSolved()) {
                     setIsSolved(true)
                     setSolverTile(undefined)
+                    setCurrentStrategy(undefined)
+                    setStrategyQueue([])
                     addMoney(1)
                     return
+                }
+                if (currentStrategy === undefined && solverTile === undefined) {
+                    const queuedStrategy = strategyQueue[0]
+                    if (queuedStrategy !== undefined) {
+                        setStrategyQueue(strategyQueue.slice(1))
+                        setCurrentStrategy(queuedStrategy)
+                        return
+                    }
+                    if (upgradeFeatures.includes('autoStrategyQueue') && autoStrategyQueueEnabled && strategies.length > 0) {
+                        const [firstStrategy, ...nextStrategies] = strategies
+                        setStrategyQueue(nextStrategies)
+                        setCurrentStrategy(firstStrategy)
+                        return
+                    }
                 }
                 if (currentStrategy !== undefined && solverTile === undefined) {
                     setSolverTile(0)
@@ -60,6 +81,16 @@ export const useTick = ({
                 }
                 if (currentStrategy !== undefined) {
                     const newSudoku = solve(currentStrategy.solver, cloneSudoku(sudoku), solverTile, solution)
+                    const completedTiles = newSudoku
+                        .map((tile, index) => ({ tile, index }))
+                        .filter(({ tile, index }) => tile.value !== undefined && tile.value !== sudoku[index].value)
+                        .map(({ index }) => index)
+
+                    completedTiles.forEach((tileIndex) => {
+                        strategyDraftHelpers.forEach((helper) => {
+                            helper.help(newSudoku, tileIndex)
+                        })
+                    })
                     setSudoku(newSudoku)
                 }
                 if (solverTile === 80) {
@@ -72,6 +103,6 @@ export const useTick = ({
             return () => {
                 clearInterval(solverInterval)
             }
-        }, [solverTile, sudoku, isSolved, currentStrategy, upgrades])
+        }, [solverTile, sudoku, isSolved, currentStrategy, strategyQueue, strategies, upgradeFeatures, autoStrategyQueueEnabled, strategyDraftHelpers])
     }
 }

@@ -2,11 +2,12 @@ import styled from 'styled-components'
 import { type UpgradeModel } from '../model/upgrades/upgrade'
 import { useSudoku } from './hooks/sudoku.context'
 
-const UpgradeStyle = styled.div`
+const UpgradeStyle = styled.div<{ $locked: boolean }>`
     flex: 0 0 auto;
     overflow: hidden;
-    border: 1px solid rgb(255 255 255 / 11%);
+    border: 1px solid ${props => props.$locked ? 'rgb(255 255 255 / 7%)' : 'rgb(255 255 255 / 11%)'};
     border-radius: 8px;
+    opacity: ${props => props.$locked ? 0.48 : 1};
     background:
         linear-gradient(180deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2.5%)),
         rgb(255 255 255 / 3.5%);
@@ -16,8 +17,8 @@ const UpgradeStyle = styled.div`
         transform 160ms ease;
 
     &:hover {
-        border-color: rgb(81 214 194 / 50%);
-        transform: translateY(-1px);
+        border-color: ${props => props.$locked ? 'rgb(255 255 255 / 7%)' : 'rgb(81 214 194 / 50%)'};
+        transform: ${props => props.$locked ? 'none' : 'translateY(-1px)'};
     }
 `
 
@@ -71,9 +72,22 @@ const CostButton = styled.button`
     &:active {
         transform: translateY(0);
     }
+
+    &:disabled {
+        border-color: rgb(255 255 255 / 14%);
+        color: #6f7684;
+        background: rgb(255 255 255 / 8%);
+        cursor: not-allowed;
+    }
+
+    &:disabled:hover {
+        filter: none;
+        transform: none;
+    }
 `
 
 interface UpgradeProps {
+    locked: boolean
     upgrade: UpgradeModel
 }
 
@@ -81,7 +95,7 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
     const { purchaseUpgrade } = useSudoku()
 
     return (
-        <UpgradeStyle>
+        <UpgradeStyle $locked={props.locked}>
             <Title>
                 {props.upgrade.name}
             </Title>
@@ -93,7 +107,11 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
             <Cost>
                 Buy:
 
-                <CostButton onClick={() => { purchaseUpgrade(props.upgrade) }}>
+                <CostButton
+                    disabled={props.locked}
+                    onClick={() => { purchaseUpgrade(props.upgrade) }}
+                    title={props.locked ? 'Complete previous category first' : undefined}
+                >
                     {props.upgrade.cost}
                 </CostButton>
             </Cost>

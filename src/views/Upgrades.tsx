@@ -1,15 +1,7 @@
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
 import { useSudoku } from './hooks/sudoku.context'
-import { type UpgradeCategory } from '../model/upgrades/upgrade'
-
-const upgradeCategoryOrder: UpgradeCategory[] = [
-    'helpers',
-    'Last drafts',
-    'Remove drafts strategy',
-    'set drafts strategy',
-    'Last draft strategy'
-]
+import { getUnlockedUpgradeCategory, upgradeCategoryOrder } from '../model/upgrades/upgrade'
 
 const UpgradesStyle = styled.aside`
     display: flex;
@@ -89,6 +81,7 @@ const EmptyState = styled.div`
 
 const Upgrades = (): JSX.Element => {
     const { upgrades } = useSudoku()
+    const unlockedUpgradeCategory = getUnlockedUpgradeCategory(upgrades)
     const upgradeSections = upgradeCategoryOrder
         .map(category => ({
             category,
@@ -104,6 +97,8 @@ const Upgrades = (): JSX.Element => {
                 ? (
                     <UpgradesContainer>
                         {upgradeSections.map((section) => {
+                            const locked = section.category !== unlockedUpgradeCategory
+
                             return (
                                 <UpgradeSection key={section.category}>
                                     <CategoryTitle>{section.category}</CategoryTitle>
@@ -113,6 +108,7 @@ const Upgrades = (): JSX.Element => {
                                             return (
                                                 <Upgrade
                                                     key={upgrade.id}
+                                                    locked={locked}
                                                     upgrade={upgrade}
                                                 />
                                             )
