@@ -1,7 +1,7 @@
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
 import { useSudoku } from './hooks/sudoku.context'
-import { getUnlockedUpgradeCategory, upgradeCategoryOrder } from '../model/upgrades/upgrade'
+import { getUnlockedUpgradeCategory, upgradeCategoryLabels, upgradeCategoryOrder } from '../model/upgrades/upgrade'
 
 const UpgradesStyle = styled.aside`
     display: flex;
@@ -101,7 +101,7 @@ const Upgrades = (): JSX.Element => {
 
                             return (
                                 <UpgradeSection key={section.category}>
-                                    <CategoryTitle>{section.category}</CategoryTitle>
+                                    <CategoryTitle>{upgradeCategoryLabels[section.category]}</CategoryTitle>
 
                                     <CategoryList>
                                         {section.upgrades.map((upgrade) => {

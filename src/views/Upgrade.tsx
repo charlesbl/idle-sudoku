@@ -105,12 +105,12 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
             </Description>
 
             <Cost>
-                Buy:
+                Buy
 
                 <CostButton
                     disabled={props.locked}
                     onClick={() => { purchaseUpgrade(props.upgrade) }}
-                    title={props.locked ? 'Complete previous category first' : undefined}
+                    title={props.locked ? 'Finish the previous category first' : undefined}
                 >
                     {props.upgrade.cost}
                 </CostButton>

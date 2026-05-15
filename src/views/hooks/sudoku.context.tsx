@@ -3,13 +3,13 @@ import type React from 'react'
 import { type CustomDifficulty, generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import { getUnlockedUpgradeCategory, type UpgradeFeature, type UpgradeModel } from '../../model/upgrades/upgrade'
 import useLocalStorageState from 'use-local-storage-state'
-import { type Strategy } from '../../model/solvers/strategy'
+import { type SudokuSolver } from '../../model/solvers/sudokuSolver'
 import { useTick } from './tick.effect'
-import { useStrategy } from './strategies.hook'
+import { useSolvers } from './solvers.hook'
 import { useUpgrades } from './upgrades.hook'
 import { useMoney } from './money.hook'
 import { trackSudokuErrors } from '../../model/solvers/errorTracker'
-import { columnDraftHelper, type DraftHelper, lineDraftHelper, squareDraftHelper } from '../../model/draftHelpers/draftHelpers'
+import { blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../../model/draftHelpers/draftHelpers'
 import { useDraftHelpers } from './draftHelpers.hook'
 
 const DIFFICULTY: CustomDifficulty = 'medium'
@@ -23,18 +23,20 @@ export interface SudokuContextModel {
     solverTile: number | undefined
     draftMode: boolean
     setDraftMode: React.Dispatch<React.SetStateAction<boolean>>
-    strategies: Strategy[]
-    currentStrategy: Strategy | undefined
-    strategyQueue: Strategy[]
-    setCurrentStrategy: (strategy?: Strategy) => void
-    setStrategyQueue: (strategies: Strategy[]) => void
-    queueStrategy: (strategy: Strategy) => void
+    solvers: SudokuSolver[]
+    autoSolvers: SudokuSolver[]
+    currentSolver: SudokuSolver | undefined
+    solverQueue: SudokuSolver[]
+    setCurrentSolver: (solver?: SudokuSolver) => void
+    setSolverQueue: (solvers: SudokuSolver[]) => void
+    queueSolver: (solver: SudokuSolver) => void
+    setAutoSolverActive: (solver: SudokuSolver, active: boolean) => void
     upgrades: UpgradeModel[]
     upgradeFeatures: UpgradeFeature[]
     setUpgrades: (upgrades: UpgradeModel[]) => void
     hasUpgradeFeature: (feature: UpgradeFeature) => boolean
-    autoStrategyQueueEnabled: boolean
-    setAutoStrategyQueueEnabled: React.Dispatch<React.SetStateAction<boolean>>
+    autoSolverQueueEnabled: boolean
+    setAutoSolverQueueEnabled: React.Dispatch<React.SetStateAction<boolean>>
     cheatSolve: () => void
     reset: () => void
     isSolved: boolean
@@ -44,7 +46,7 @@ export interface SudokuContextModel {
     addMoney: (amount: number) => void
     purchaseUpgrade: (upgrade: UpgradeModel) => void
     draftHelpers: DraftHelper[]
-    strategyDraftHelpers: DraftHelper[]
+    solverDraftHelpers: DraftHelper[]
     addDraftHelper: (id: string) => void
 }
 
@@ -57,18 +59,28 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: false })
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
-    const [autoStrategyQueueEnabled, setAutoStrategyQueueEnabled] = useLocalStorageState<boolean>('autoStrategyQueueEnabled', { defaultValue: true })
+    const [autoSolverQueueEnabled, setAutoSolverQueueEnabled] = useLocalStorageState<boolean>('autoSolverQueueEnabled', { defaultValue: true })
 
     const { upgrades, upgradeFeatures, setUpgrades, unlockUpgradeFeature } = useUpgrades()
 
-    const { setCurrentStrategy, strategies, currentStrategy, setStrategies, strategyQueue, setStrategyQueue, queueStrategy } = useStrategy()
+    const {
+        setCurrentSolver,
+        solvers,
+        autoSolvers,
+        currentSolver,
+        setSolvers,
+        solverQueue,
+        setSolverQueue,
+        queueSolver,
+        setAutoSolverActive
+    } = useSolvers()
 
     const { money, addMoney, spend } = useMoney()
     const { draftHelpers, addDraftHelper } = useDraftHelpers()
-    const strategyDraftHelpers = [
-        upgradeFeatures.includes('strategyLineDraftHelper') ? lineDraftHelper : undefined,
-        upgradeFeatures.includes('strategyColumnDraftHelper') ? columnDraftHelper : undefined,
-        upgradeFeatures.includes('strategySquareDraftHelper') ? squareDraftHelper : undefined
+    const solverDraftHelpers = [
+        upgradeFeatures.includes('solverRowDraftHelper') ? rowDraftHelper : undefined,
+        upgradeFeatures.includes('solverColumnDraftHelper') ? columnDraftHelper : undefined,
+        upgradeFeatures.includes('solverBlockDraftHelper') ? blockDraftHelper : undefined
     ].filter((helper): helper is DraftHelper => helper !== undefined)
 
     const hasValueUpdate = (nextSudoku: SudokuModel, previousSudoku?: SudokuModel): boolean =>
@@ -94,8 +106,8 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolution(solution)
         setIsSolved(false)
         setSolverTile(undefined)
-        setCurrentStrategy(undefined)
-        setStrategyQueue([])
+        setCurrentSolver(undefined)
+        setSolverQueue([])
     }
 
     const hasUpgradeFeature = (feature: UpgradeFeature): boolean => upgradeFeatures.includes(feature)
@@ -106,25 +118,25 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
         const spent = spend(upgrade.cost)
         if (!spent) return
-        if (upgrade.strategy !== undefined) {
-            let newStrategies = [...strategies, upgrade.strategy]
-            if (upgrade.strategy.overrideStrategies !== undefined) {
-                const removeStrategyIds = upgrade.strategy.overrideStrategies.map(strategy => strategy.id)
-                newStrategies = newStrategies.filter(strategy => !removeStrategyIds.includes(strategy.id))
+        if (upgrade.solver !== undefined) {
+            let newSolvers = [...solvers, upgrade.solver]
+            if (upgrade.solver.replaces !== undefined) {
+                const replacedSolverIds = upgrade.solver.replaces.map(solver => solver.id)
+                newSolvers = newSolvers.filter(solver => !replacedSolverIds.includes(solver.id))
             }
-            setStrategies(newStrategies)
+            setSolvers(newSolvers)
         }
         if (upgrade.draftHelper !== undefined) {
             addDraftHelper(upgrade.draftHelper.id)
         }
         if (upgrade.feature !== undefined) {
             unlockUpgradeFeature(upgrade.feature)
-            if (upgrade.feature === 'autoStrategyQueue') setAutoStrategyQueueEnabled(true)
+            if (upgrade.feature === 'autoSolverQueue') setAutoSolverQueueEnabled(true)
         }
-        const overrideStrategyIds = upgrade.strategy?.overrideStrategies?.map(strategy => strategy.id) ?? []
+        const replacedSolverIds = upgrade.solver?.replaces?.map(solver => solver.id) ?? []
         setUpgrades(upgrades.filter((u) =>
             u.id !== upgrade.id &&
-            (u.strategy === undefined || !overrideStrategyIds.includes(u.strategy.id))
+            (u.solver === undefined || !replacedSolverIds.includes(u.solver.id))
         ))
     }
 
@@ -147,9 +159,10 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         solverTile,
         draftMode,
         setDraftMode,
-        strategies,
-        currentStrategy,
-        strategyQueue,
+        solvers,
+        autoSolvers,
+        currentSolver,
+        solverQueue,
         upgrades,
         upgradeFeatures,
         setUpgrades,
@@ -157,18 +170,19 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         reset,
         isSolved,
         setIsSolved,
-        setCurrentStrategy,
-        setStrategyQueue,
-        queueStrategy,
+        setCurrentSolver,
+        setSolverQueue,
+        queueSolver,
+        setAutoSolverActive,
         setSolverTile,
         money,
         addMoney,
         purchaseUpgrade,
         hasUpgradeFeature,
-        autoStrategyQueueEnabled,
-        setAutoStrategyQueueEnabled,
+        autoSolverQueueEnabled,
+        setAutoSolverQueueEnabled,
         draftHelpers,
-        strategyDraftHelpers,
+        solverDraftHelpers,
         addDraftHelper
     }
 

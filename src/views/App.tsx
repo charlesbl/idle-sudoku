@@ -4,9 +4,9 @@ import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 import { cloneSudoku } from '../model/sudoku.model'
 
-// TODO add in right panel a button for each strategy to activate it and pass only once, queue strategies if the first one is not finished.
+// TODO add in right panel a button for each solver to activate it and pass only once, queue solvers if the first one is not finished.
 // TODO add selector for difficulty. more difficult = more money.
-// TODO prevent buying strategy that has been removed by an upgrade.
+// TODO prevent buying solver that has been removed by an upgrade.
 
 const AppStyle = styled.div`
     --panel-bg: rgb(14 18 24 / 84%);
@@ -177,21 +177,83 @@ const ActionBar = styled.div`
     }
 `
 
-const ActionButton = styled.button`
+const Tooltip = styled.span`
+    position: absolute;
+    bottom: calc(100% + 0.55rem);
+    left: 50%;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 8px;
+    color: var(--text-strong);
+    font-size: 0.78rem;
+    font-weight: 750;
+    line-height: 1;
+    white-space: nowrap;
+    background: rgb(7 10 14 / 96%);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 36%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.2rem);
+    transition:
+        opacity 140ms ease,
+        visibility 140ms ease,
+        transform 140ms ease;
+    visibility: hidden;
+
+    kbd {
+        min-width: 1.6rem;
+        padding: 0.18rem 0.35rem;
+        border: 1px solid rgb(255 255 255 / 24%);
+        border-radius: 5px;
+        color: var(--accent-strong);
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 900;
+        background: rgb(255 255 255 / 8%);
+        box-shadow: inset 0 -1px 0 rgb(0 0 0 / 35%);
+    }
+`
+
+const TooltipAnchor = styled.div`
+    position: relative;
+    display: inline-flex;
+
+    &:hover ${Tooltip},
+    &:focus-within ${Tooltip} {
+        opacity: 1;
+        transform: translate(-50%, 0);
+        visibility: visible;
+    }
+`
+
+const ActionButton = styled.button<{ $active?: boolean }>`
     min-height: 2.5rem;
     padding: 0 1rem;
-    border: 1px solid rgb(255 255 255 / 12%);
+    border: 1px solid ${props => props.$active === true ? 'rgb(81 214 194 / 70%)' : 'rgb(255 255 255 / 12%)'};
     border-radius: 8px;
     color: var(--text-strong);
     font: inherit;
     font-size: 0.9rem;
     font-weight: 800;
-    background: linear-gradient(180deg, rgb(255 255 255 / 14%), rgb(255 255 255 / 5.5%));
+    background: ${props => props.$active === true
+        ? 'linear-gradient(180deg, rgb(81 214 194 / 28%), rgb(81 214 194 / 12%))'
+        : 'linear-gradient(180deg, rgb(255 255 255 / 14%), rgb(255 255 255 / 5.5%))'};
+    box-shadow: ${props => props.$active === true ? 'inset 0 1px 0 rgb(255 255 255 / 10%), 0 0 18px rgb(81 214 194 / 18%)' : 'none'};
     cursor: pointer;
     transition:
         border-color 160ms ease,
+        box-shadow 160ms ease,
         background 160ms ease,
         transform 160ms ease;
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 2px;
+    }
 
     &:hover:not(:disabled) {
         border-color: rgb(81 214 194 / 80%);
@@ -204,7 +266,7 @@ const ActionButton = styled.button`
     }
 `
 
-const StrategyPanel = styled.aside`
+const SolverPanel = styled.aside`
     display: flex;
     flex: 0 1 260px;
     align-self: center;
@@ -216,6 +278,7 @@ const StrategyPanel = styled.aside`
     border-radius: 8px;
     background: var(--panel-bg);
     box-shadow: 0 18px 50px rgb(0 0 0 / 28%);
+    overflow: hidden;
 
     @media (width <= 1100px) {
         order: 3;
@@ -231,7 +294,19 @@ const StrategyPanel = styled.aside`
     }
 `
 
-const StrategyTitle = styled.div`
+const SolverSection = styled.section`
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    & + & {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgb(255 255 255 / 10%);
+    }
+`
+
+const SolverTitle = styled.div`
     margin-bottom: 0.9rem;
     color: var(--text-muted);
     font-size: 0.78rem;
@@ -240,17 +315,23 @@ const StrategyTitle = styled.div`
     text-transform: uppercase;
 `
 
-const StrategyList = styled.div`
+const SolverList = styled.div`
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    overflow-y: auto;
+    overflow: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
 `
 
-const StrategyRow = styled.div<{ $active: boolean }>`
+const SolverRow = styled.div<{ $active: boolean }>`
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
 
     &::before {
         width: 0.35rem;
@@ -261,13 +342,14 @@ const StrategyRow = styled.div<{ $active: boolean }>`
     }
 `
 
-const StrategyButton = styled.button`
+const SolverButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex: 1;
     gap: 0.5rem;
     min-height: 2.3rem;
+    min-width: 0;
     padding: 0 0.75rem;
     border: 1px solid rgb(255 255 255 / 10%);
     border-radius: 8px;
@@ -282,6 +364,12 @@ const StrategyButton = styled.button`
         border-color 160ms ease,
         background 160ms ease;
 
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     &:disabled {
         color: var(--text-muted);
         cursor: not-allowed;
@@ -294,7 +382,47 @@ const StrategyButton = styled.button`
     }
 `
 
-const StrategyQueueBadge = styled.span`
+const AutoSolverToggle = styled.button<{ $active: boolean }>`
+    position: relative;
+    flex: 0 0 auto;
+    width: 2.45rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 1px solid ${props => props.$active ? 'rgb(81 214 194 / 70%)' : 'rgb(255 255 255 / 18%)'};
+    border-radius: 999px;
+    background: ${props => props.$active ? 'rgb(81 214 194 / 24%)' : 'rgb(255 255 255 / 7%)'};
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease;
+
+    &::after {
+        position: absolute;
+        top: 50%;
+        left: 0.16rem;
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 999px;
+        background: ${props => props.$active ? 'var(--accent-strong)' : 'rgb(255 255 255 / 44%)'};
+        box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
+        content: "";
+        transform: translate(${props => props.$active ? '1.05rem' : '0'}, -50%);
+        transition:
+            background 160ms ease,
+            transform 160ms ease;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 2px;
+    }
+
+    &:hover {
+        border-color: rgb(81 214 194 / 78%);
+    }
+`
+
+const SolverQueueBadge = styled.span`
     display: inline-grid;
     flex: 0 0 auto;
     min-width: 1.35rem;
@@ -306,6 +434,52 @@ const StrategyQueueBadge = styled.span`
     font-size: 0.72rem;
     font-weight: 900;
     background: rgb(81 214 194 / 13%);
+`
+
+const QueueList = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 13rem;
+    overflow: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+`
+
+const QueuedSolverRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2rem;
+    padding: 0 0.65rem;
+    border: 1px solid rgb(81 214 194 / 16%);
+    border-radius: 8px;
+    color: var(--text-strong);
+    font-size: 0.86rem;
+    font-weight: 750;
+    background: rgb(81 214 194 / 8%);
+`
+
+const QueuePosition = styled.span`
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border-radius: 999px;
+    color: rgb(7 10 14);
+    font-size: 0.7rem;
+    font-weight: 900;
+    background: var(--accent-strong);
+`
+
+const QueueSolverName = styled.span`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `
 
 const EmptyState = styled.div`
@@ -321,26 +495,31 @@ const App = (): JSX.Element => {
         setDraftMode,
         selectedTile,
         setSelectedTile,
-        strategies,
-        currentStrategy,
-        strategyQueue,
+        solvers,
+        autoSolvers,
+        currentSolver,
+        solverQueue,
         cheatSolve,
         reset,
         money,
         draftHelpers,
-        setCurrentStrategy,
-        queueStrategy,
+        setCurrentSolver,
+        queueSolver,
+        setAutoSolverActive,
         hasUpgradeFeature,
-        autoStrategyQueueEnabled,
-        setAutoStrategyQueueEnabled
+        autoSolverQueueEnabled,
+        setAutoSolverQueueEnabled
     } = useSudoku()
-    const canQueueStrategies = hasUpgradeFeature('strategyQueue') || hasUpgradeFeature('autoStrategyQueue')
-    const hasAutoQueueUpgrade = hasUpgradeFeature('autoStrategyQueue')
-    const autoQueueStrategies = hasAutoQueueUpgrade && autoStrategyQueueEnabled
+    const canQueueSolvers = hasUpgradeFeature('solverQueue') || hasUpgradeFeature('autoSolverQueue')
+    const hasAutoQueueUpgrade = hasUpgradeFeature('autoSolverQueue')
+    const autoQueueSolvers = hasAutoQueueUpgrade && autoSolverQueueEnabled
+    const autoSolverIdSet = new Set(autoSolvers.map(solver => solver.id))
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key !== ' ' && e.key !== '0') return
-        setDraftMode(!draftMode)
+        if (e.key === ' ' && e.target instanceof HTMLButtonElement) return
+        e.preventDefault()
+        setDraftMode(current => !current)
     }
 
     const handleSelectedTileDisplacement = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -430,31 +609,31 @@ const App = (): JSX.Element => {
                     </InfoCard>
 
                     <InfoCard>
-                        <InfoLabel>Strategy</InfoLabel>
+                        <InfoLabel>Solver</InfoLabel>
 
                         <InfoValue>
-                            {currentStrategy?.name ?? 'No Strategy'}
+                            {currentSolver?.name ?? 'None'}
                         </InfoValue>
                     </InfoCard>
 
                     <InfoCard>
-                        <InfoLabel>Draft mode</InfoLabel>
+                        <InfoLabel>Drafts</InfoLabel>
 
                         <InfoValue>
                             <DraftStatus $active={draftMode}>
-                                {draftMode ? 'on' : 'off'}
+                                {draftMode ? 'active' : 'inactive'}
                             </DraftStatus>
                         </InfoValue>
                     </InfoCard>
 
-                    {canQueueStrategies && (
+                    {canQueueSolvers && (
                         <InfoCard>
                             <InfoLabel>Queue</InfoLabel>
 
-                            <InfoValue $accent={autoQueueStrategies}>
+                            <InfoValue $accent={autoQueueSolvers}>
                                 {hasAutoQueueUpgrade
-                                    ? `${autoQueueStrategies ? 'auto' : 'manual'} (${strategyQueue.length})`
-                                    : strategyQueue.length}
+                                    ? `${autoQueueSolvers ? 'auto' : 'manual'} (${solverQueue.length})`
+                                    : solverQueue.length}
                             </InfoValue>
                         </InfoCard>
                     )}
@@ -462,75 +641,148 @@ const App = (): JSX.Element => {
 
                 <BoardShell>
                     {sudoku === undefined
-                        ? <LoadingState>Generating...</LoadingState>
+                        ? <LoadingState>Preparing...</LoadingState>
                         : (
                             <SudokuGrid />
                         )}
                 </BoardShell>
 
                 <ActionBar>
-                    <ActionButton onClick={cheatSolve}>Solve</ActionButton>
+                    <TooltipAnchor>
+                        <ActionButton
+                            $active={draftMode}
+                            aria-describedby="draft-mode-shortcut"
+                            aria-pressed={draftMode}
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setDraftMode(current => !current)
+                            }}
+                        >
+                            Draft mode:
+
+                            {draftMode ? 'On' : 'Off'}
+                        </ActionButton>
+
+                        <Tooltip
+                            id="draft-mode-shortcut"
+                            role="tooltip"
+                        >
+                            Keyboard
+
+                            <kbd>Space</kbd>
+
+                            <kbd>0</kbd>
+                        </Tooltip>
+                    </TooltipAnchor>
+
+                    <ActionButton onClick={cheatSolve}>Reveal solution</ActionButton>
 
                     <ActionButton onClick={() => {
                         reset()
                     }}
                     >
-                        New
+                        New puzzle
                     </ActionButton>
 
                     {hasAutoQueueUpgrade && (
                         <ActionButton
-                            onClick={() => { setAutoStrategyQueueEnabled(!autoStrategyQueueEnabled) }}
+                            onClick={() => { setAutoSolverQueueEnabled(!autoSolverQueueEnabled) }}
                         >
                             Auto queue:
 
-                            {autoStrategyQueueEnabled ? 'On' : 'Off'}
+                            {autoSolverQueueEnabled ? 'On' : 'Off'}
                         </ActionButton>
                     )}
 
-                    <ActionButton onClick={() => { localStorage.clear() }}>Clear save</ActionButton>
+                    <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
                 </ActionBar>
             </SudokuLayout>
 
-            <StrategyPanel>
-                <StrategyTitle>
-                    Unlocked Strategies
-                </StrategyTitle>
+            <SolverPanel>
+                {canQueueSolvers && (
+                    <SolverSection>
+                        <SolverTitle>
+                            Queued solvers
+                        </SolverTitle>
 
-                <StrategyList>
-                    {strategies.length > 0
-                        ? strategies.map((strategy) => {
-                            const queuedCount = strategyQueue.filter(queuedStrategy => queuedStrategy.id === strategy.id).length
+                        <QueueList>
+                            {solverQueue.length > 0
+                                ? solverQueue.map((solver, index) => (
+                                    <QueuedSolverRow key={`${solver.id}-${index}`}>
+                                        <QueuePosition>
+                                            {index + 1}
+                                        </QueuePosition>
 
-                            return (
-                                <StrategyRow
-                                    $active={strategy.id === currentStrategy?.id}
-                                    key={strategy.id}
-                                >
-                                    <StrategyButton
-                                        disabled={!canQueueStrategies && currentStrategy !== undefined}
-                                        onClick={() => {
-                                            if (canQueueStrategies) {
-                                                queueStrategy(strategy)
-                                                return
-                                            }
-                                            setCurrentStrategy(strategy)
-                                        }}
+                                        <QueueSolverName>
+                                            {solver.name}
+                                        </QueueSolverName>
+                                    </QueuedSolverRow>
+                                ))
+                                : (
+                                    <EmptyState>
+                                        {autoQueueSolvers && autoSolvers.length === 0
+                                            ? 'No auto solvers active'
+                                            : 'Queue empty'}
+                                    </EmptyState>
+                                )}
+                        </QueueList>
+                    </SolverSection>
+                )}
+
+                <SolverSection>
+                    <SolverTitle>
+                        Unlocked solvers
+                    </SolverTitle>
+
+                    <SolverList>
+                        {solvers.length > 0
+                            ? solvers.map((solver) => {
+                                const queuedCount = solverQueue.filter(queuedSolver => queuedSolver.id === solver.id).length
+                                const autoSolverActive = autoSolverIdSet.has(solver.id)
+
+                                return (
+                                    <SolverRow
+                                        $active={solver.id === currentSolver?.id}
+                                        key={solver.id}
                                     >
-                                        <span>{strategy.name}</span>
+                                        <SolverButton
+                                            disabled={!canQueueSolvers && currentSolver !== undefined}
+                                            onClick={() => {
+                                                if (canQueueSolvers) {
+                                                    queueSolver(solver)
+                                                    return
+                                                }
+                                                setCurrentSolver(solver)
+                                            }}
+                                        >
+                                            <span>{solver.name}</span>
 
-                                        {queuedCount > 0 && (
-                                            <StrategyQueueBadge>
-                                                {queuedCount}
-                                            </StrategyQueueBadge>
+                                            {queuedCount > 0 && (
+                                                <SolverQueueBadge>
+                                                    {queuedCount}
+                                                </SolverQueueBadge>
+                                            )}
+                                        </SolverButton>
+
+                                        {autoQueueSolvers && (
+                                            <AutoSolverToggle
+                                                $active={autoSolverActive}
+                                                aria-label={`${autoSolverActive ? 'Disable' : 'Enable'} ${solver.name} in auto queue`}
+                                                aria-pressed={autoSolverActive}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setAutoSolverActive(solver, !autoSolverActive)
+                                                }}
+                                                type="button"
+                                            />
                                         )}
-                                    </StrategyButton>
-                                </StrategyRow>
-                            )
-                        })
-                        : <EmptyState>No strategies unlocked</EmptyState>}
-                </StrategyList>
-            </StrategyPanel>
+                                    </SolverRow>
+                                )
+                            })
+                            : <EmptyState>No solvers unlocked</EmptyState>}
+                    </SolverList>
+                </SolverSection>
+            </SolverPanel>
         </AppStyle>
     )
 }

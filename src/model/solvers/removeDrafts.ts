@@ -1,26 +1,26 @@
-import { getSquareId } from '../../utils/utils'
+import { getBlockId } from '../../utils/utils'
 import { type SudokuModel } from '../sudoku.model'
 import { type TestedNumber } from './solver'
-import { type Strategy } from './strategy'
+import { type SudokuSolver } from './sudokuSolver'
 
-export const removeLineDraftStrategy: Strategy = {
-    id: 'remove-line-draft',
-    name: 'Remove line drafts strategy',
-    solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+export const clearRowDraftsSolver: SudokuSolver = {
+    id: 'clear-row-drafts',
+    name: 'Clear row drafts',
+    solve: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
         if (sudoku[solvingTile].value !== undefined) return sudoku
         const newSudoku = [...sudoku]
-        const line = newSudoku.filter((_, index) => Math.floor(index / 9) === Math.floor(solvingTile / 9))
+        const row = newSudoku.filter((_, index) => Math.floor(index / 9) === Math.floor(solvingTile / 9))
         testedNumbers.forEach((testedNb) => {
-            if (line.some((tile) => tile.value === testedNb.index + 1)) { newSudoku[solvingTile].draftNumbers[testedNb.index] = false }
+            if (row.some((tile) => tile.value === testedNb.index + 1)) { newSudoku[solvingTile].draftNumbers[testedNb.index] = false }
         })
         return newSudoku
     }
 }
 
-export const removeColumnDraftStrategy: Strategy = {
-    id: 'remove-column-draft',
-    name: 'Remove column drafts strategy',
-    solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+export const clearColumnDraftsSolver: SudokuSolver = {
+    id: 'clear-column-drafts',
+    name: 'Clear column drafts',
+    solve: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
         if (sudoku[solvingTile].value !== undefined) return sudoku
         const newSudoku = [...sudoku]
         const column = newSudoku.filter((_, index) => Math.floor(index % 9) === Math.floor(solvingTile % 9))
@@ -31,28 +31,28 @@ export const removeColumnDraftStrategy: Strategy = {
     }
 }
 
-export const removeSquareDraftStrategy: Strategy = {
-    id: 'remove-square-draft',
-    name: 'Remove square drafts strategy',
-    solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+export const clearBlockDraftsSolver: SudokuSolver = {
+    id: 'clear-block-drafts',
+    name: 'Clear block drafts',
+    solve: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
         if (sudoku[solvingTile].value !== undefined) return sudoku
         const newSudoku = [...sudoku]
-        const square = newSudoku.filter((_, index) => getSquareId(index) === getSquareId(solvingTile))
+        const block = newSudoku.filter((_, index) => getBlockId(index) === getBlockId(solvingTile))
         testedNumbers.forEach((testedNb) => {
-            if (square.some((tile) => tile.value === testedNb.index + 1)) { newSudoku[solvingTile].draftNumbers[testedNb.index] = false }
+            if (block.some((tile) => tile.value === testedNb.index + 1)) { newSudoku[solvingTile].draftNumbers[testedNb.index] = false }
         })
         return newSudoku
     }
 }
 
-export const removeAllDraftStrategy: Strategy = {
-    id: 'remove-all-draft',
-    name: 'Remove drafts strategy',
-    solver: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
-        let newSudoku = removeLineDraftStrategy.solver(sudoku, solvingTile, testedNumbers)
-        newSudoku = removeColumnDraftStrategy.solver(newSudoku, solvingTile, testedNumbers)
-        newSudoku = removeSquareDraftStrategy.solver(newSudoku, solvingTile, testedNumbers)
+export const clearImpossibleDraftsSolver: SudokuSolver = {
+    id: 'clear-impossible-drafts',
+    name: 'Clear impossible drafts',
+    solve: (sudoku: SudokuModel, solvingTile: number, testedNumbers: TestedNumber[]): SudokuModel => {
+        let newSudoku = clearRowDraftsSolver.solve(sudoku, solvingTile, testedNumbers)
+        newSudoku = clearColumnDraftsSolver.solve(newSudoku, solvingTile, testedNumbers)
+        newSudoku = clearBlockDraftsSolver.solve(newSudoku, solvingTile, testedNumbers)
         return newSudoku
     },
-    overrideStrategies: [removeLineDraftStrategy, removeColumnDraftStrategy, removeSquareDraftStrategy]
+    replaces: [clearRowDraftsSolver, clearColumnDraftsSolver, clearBlockDraftsSolver]
 }

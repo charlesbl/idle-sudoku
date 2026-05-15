@@ -1,8 +1,8 @@
-import { columnDraftHelper, type DraftHelper, lineDraftHelper, squareDraftHelper } from '../draftHelpers/draftHelpers'
-import { lastColumnDraftStrategy, lastDraftStrategy, lastLineDraftStrategy, lastSquareDraftStrategy, lastTileDraftStrategy } from '../solvers/lastDraft'
-import { removeAllDraftStrategy } from '../solvers/removeDrafts'
-import { setDraftStrategy } from '../solvers/setDrafts'
-import { type Strategy } from '../solvers/strategy'
+import { blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../draftHelpers/draftHelpers'
+import { findSingleDraftsSolver, onlyDraftInCellSolver, singleDraftInBlockSolver, singleDraftInColumnSolver, singleDraftInRowSolver } from '../solvers/lastDraft'
+import { clearImpossibleDraftsSolver } from '../solvers/removeDrafts'
+import { calculateValidDraftsSolver } from '../solvers/setDrafts'
+import { type SudokuSolver } from '../solvers/sudokuSolver'
 
 export interface UpgradeModel {
     id: string
@@ -10,126 +10,136 @@ export interface UpgradeModel {
     category: UpgradeCategory
     cost: number
     description: string
-    strategy?: Strategy
+    solver?: SudokuSolver
     draftHelper?: DraftHelper
     feature?: UpgradeFeature
 }
 
 export type UpgradeCategory =
-    | 'helpers'
-    | 'Last drafts'
-    | 'Strategy queue'
-    | 'Remove drafts strategy'
-    | 'set drafts strategy'
-    | 'Last draft strategy'
-    | 'Strategy automation'
-    | 'Strategy helpers'
+    | 'draftHelpers'
+    | 'singleDrafts'
+    | 'solverQueue'
+    | 'draftCleanup'
+    | 'draftSetup'
+    | 'advancedSingles'
+    | 'solverAutomation'
+    | 'automaticHelpers'
 
 export type UpgradeFeature =
-    | 'strategyQueue'
-    | 'autoStrategyQueue'
-    | 'strategyLineDraftHelper'
-    | 'strategyColumnDraftHelper'
-    | 'strategySquareDraftHelper'
+    | 'solverQueue'
+    | 'autoSolverQueue'
+    | 'solverRowDraftHelper'
+    | 'solverColumnDraftHelper'
+    | 'solverBlockDraftHelper'
 
 export const upgradeCategoryOrder: UpgradeCategory[] = [
-    'helpers',
-    'Last drafts',
-    'Strategy queue',
-    'Remove drafts strategy',
-    'set drafts strategy',
-    'Last draft strategy',
-    'Strategy automation',
-    'Strategy helpers'
+    'draftHelpers',
+    'singleDrafts',
+    'solverQueue',
+    'draftCleanup',
+    'draftSetup',
+    'advancedSingles',
+    'solverAutomation',
+    'automaticHelpers'
 ]
+
+export const upgradeCategoryLabels: Record<UpgradeCategory, string> = {
+    draftHelpers: 'Draft helpers',
+    singleDrafts: 'Single drafts',
+    solverQueue: 'Solver queue',
+    draftCleanup: 'Draft cleanup',
+    draftSetup: 'Draft setup',
+    advancedSingles: 'Advanced singles',
+    solverAutomation: 'Automation',
+    automaticHelpers: 'Automatic helpers'
+}
 
 export const getUnlockedUpgradeCategory = (upgrades: UpgradeModel[]): UpgradeCategory | undefined => {
     return upgradeCategoryOrder.find(category => upgrades.some(upgrade => upgrade.category === category))
 }
 
-const createStrategyUpgrade = (strategy: Strategy, category: UpgradeCategory, description: string, cost: number): UpgradeModel => ({
-    id: `${strategy.id}-upgrade`,
-    name: strategy.name,
+const createSolverUpgrade = (solver: SudokuSolver, category: UpgradeCategory, description: string, cost: number): UpgradeModel => ({
+    id: `${solver.id}-upgrade`,
+    name: solver.name,
     category,
     cost,
     description,
-    strategy
+    solver
 })
 
 export const allUpgrades: UpgradeModel[] = [
     // draft helpers
     {
-        id: `${lineDraftHelper.id}-upgrade`,
-        name: 'Line draft helper',
-        category: 'helpers',
+        id: `${rowDraftHelper.id}-draft-helper-upgrade`,
+        name: 'Row draft helper',
+        category: 'draftHelpers',
         cost: 1,
-        description: 'When you place a number, remove this number draft on line',
-        draftHelper: lineDraftHelper
+        description: 'When you place a number, remove its draft from the other cells in the row.',
+        draftHelper: rowDraftHelper
     },
     {
-        id: `${columnDraftHelper.id}-upgrade`,
+        id: `${columnDraftHelper.id}-draft-helper-upgrade`,
         name: 'Column draft helper',
-        category: 'helpers',
+        category: 'draftHelpers',
         cost: 1,
-        description: 'When you place a number, remove this number draft on column',
+        description: 'When you place a number, remove its draft from the other cells in the column.',
         draftHelper: columnDraftHelper
     },
     {
-        id: `${squareDraftHelper.id}-upgrade`,
-        name: 'Square draft helper',
-        category: 'helpers',
+        id: `${blockDraftHelper.id}-draft-helper-upgrade`,
+        name: 'Block draft helper',
+        category: 'draftHelpers',
         cost: 1,
-        description: 'When you place a number, remove this number draft on square',
-        draftHelper: squareDraftHelper
+        description: 'When you place a number, remove its draft from the other cells in the block.',
+        draftHelper: blockDraftHelper
     },
-    // last draft
-    createStrategyUpgrade(lastLineDraftStrategy, 'Last drafts', 'Set number if the draft is available only in one tile on the line', 1),
-    createStrategyUpgrade(lastColumnDraftStrategy, 'Last drafts', 'Set number if the draft is available only in one tile on the column', 1),
-    createStrategyUpgrade(lastSquareDraftStrategy, 'Last drafts', 'Set number if the draft is available only in one tile on the square', 1),
-    createStrategyUpgrade(lastTileDraftStrategy, 'Last drafts', 'Set number if its the last draft of the tile', 1),
+    // single drafts
+    createSolverUpgrade(singleDraftInRowSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the row.', 1),
+    createSolverUpgrade(singleDraftInColumnSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the column.', 1),
+    createSolverUpgrade(singleDraftInBlockSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the block.', 1),
+    createSolverUpgrade(onlyDraftInCellSolver, 'singleDrafts', 'Place a number when a cell has only one draft left.', 1),
     {
-        id: 'strategy-queue-upgrade',
-        name: 'Strategy queue',
-        category: 'Strategy queue',
+        id: 'solver-queue-upgrade',
+        name: 'Solver queue',
+        category: 'solverQueue',
         cost: 1,
-        description: 'Queue strategies while another strategy is running',
-        feature: 'strategyQueue'
+        description: 'Queue solvers while another solver is already running.',
+        feature: 'solverQueue'
     },
-    // remove drafts
-    createStrategyUpgrade(removeAllDraftStrategy, 'Remove drafts strategy', 'Remove impossible draft', 1),
-    // set draft
-    createStrategyUpgrade(setDraftStrategy, 'set drafts strategy', 'Set all drafts', 1),
-    createStrategyUpgrade(lastDraftStrategy, 'Last draft strategy', 'Set number if the draft is available only in one tile on the line / colmun / square or if its the last draft of the tile', 1),
+    // merged solvers
+    createSolverUpgrade(clearImpossibleDraftsSolver, 'draftCleanup', 'Merges row, column, and block cleanup into one solver, replacing the separate cleanup solvers.', 1),
+    createSolverUpgrade(calculateValidDraftsSolver, 'draftSetup', 'Merges draft filling and cleanup into one solver, replacing the separate draft setup solvers.', 1),
+    createSolverUpgrade(findSingleDraftsSolver, 'advancedSingles', 'Merges the row, column, block, and cell single-draft solvers into one solver, replacing the separate versions.', 1),
     {
-        id: 'auto-strategy-queue-upgrade',
-        name: 'Auto strategy queue',
-        category: 'Strategy automation',
+        id: 'auto-solver-queue-upgrade',
+        name: 'Auto-run solvers',
+        category: 'solverAutomation',
         cost: 1,
-        description: 'Automatically queue every unlocked strategy when the queue is empty',
-        feature: 'autoStrategyQueue'
-    },
-    {
-        id: 'strategy-line-draft-helper-upgrade',
-        name: 'Strategy line draft helper',
-        category: 'Strategy helpers',
-        cost: 1,
-        description: 'When a strategy places a number, remove this number draft on line',
-        feature: 'strategyLineDraftHelper'
+        description: 'Automatically run every unlocked solver when the queue is empty.',
+        feature: 'autoSolverQueue'
     },
     {
-        id: 'strategy-column-draft-helper-upgrade',
-        name: 'Strategy column draft helper',
-        category: 'Strategy helpers',
+        id: 'solver-row-draft-helper-upgrade',
+        name: 'Auto row draft helper',
+        category: 'automaticHelpers',
         cost: 1,
-        description: 'When a strategy places a number, remove this number draft on column',
-        feature: 'strategyColumnDraftHelper'
+        description: 'When a solver places a number, remove its draft from the other cells in the row.',
+        feature: 'solverRowDraftHelper'
     },
     {
-        id: 'strategy-square-draft-helper-upgrade',
-        name: 'Strategy square draft helper',
-        category: 'Strategy helpers',
+        id: 'solver-column-draft-helper-upgrade',
+        name: 'Auto column draft helper',
+        category: 'automaticHelpers',
         cost: 1,
-        description: 'When a strategy places a number, remove this number draft on square',
-        feature: 'strategySquareDraftHelper'
+        description: 'When a solver places a number, remove its draft from the other cells in the column.',
+        feature: 'solverColumnDraftHelper'
+    },
+    {
+        id: 'solver-block-draft-helper-upgrade',
+        name: 'Auto block draft helper',
+        category: 'automaticHelpers',
+        cost: 1,
+        description: 'When a solver places a number, remove its draft from the other cells in the block.',
+        feature: 'solverBlockDraftHelper'
     }
 ]

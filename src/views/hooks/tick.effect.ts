@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { type SudokuContextModel } from './sudoku.context'
-import { solve } from '../../model/solvers/solver'
+import { runSolverStep } from '../../model/solvers/solver'
 import { cloneSudoku } from '../../model/sudoku.model'
 
 const SOLVER_TICK_TIME = 10
@@ -10,18 +10,18 @@ export const useTick = ({
     solution,
     setSudoku,
     solverTile,
-    setCurrentStrategy,
-    currentStrategy,
-    strategies,
-    strategyQueue,
-    setStrategyQueue,
+    setCurrentSolver,
+    currentSolver,
+    autoSolvers,
+    solverQueue,
+    setSolverQueue,
     setSolverTile,
     isSolved,
     setIsSolved,
     reset,
     upgradeFeatures,
-    autoStrategyQueueEnabled,
-    strategyDraftHelpers,
+    autoSolverQueueEnabled,
+    solverDraftHelpers,
     addMoney
 }: SudokuContextModel): () => void => {
     const nextTile = (): void => {
@@ -53,48 +53,46 @@ export const useTick = ({
                 if (checkSolved()) {
                     setIsSolved(true)
                     setSolverTile(undefined)
-                    setCurrentStrategy(undefined)
-                    setStrategyQueue([])
+                    setCurrentSolver(undefined)
+                    setSolverQueue([])
                     addMoney(1)
                     return
                 }
-                if (currentStrategy === undefined && solverTile === undefined) {
-                    const queuedStrategy = strategyQueue[0]
-                    if (queuedStrategy !== undefined) {
-                        setStrategyQueue(strategyQueue.slice(1))
-                        setCurrentStrategy(queuedStrategy)
+                if (currentSolver === undefined && solverTile === undefined) {
+                    const queuedSolver = solverQueue[0]
+                    if (queuedSolver !== undefined) {
+                        setSolverQueue(solverQueue.slice(1))
+                        setCurrentSolver(queuedSolver)
                         return
                     }
-                    if (upgradeFeatures.includes('autoStrategyQueue') && autoStrategyQueueEnabled && strategies.length > 0) {
-                        const [firstStrategy, ...nextStrategies] = strategies
-                        setStrategyQueue(nextStrategies)
-                        setCurrentStrategy(firstStrategy)
+                    if (upgradeFeatures.includes('autoSolverQueue') && autoSolverQueueEnabled && autoSolvers.length > 0) {
+                        setSolverQueue(autoSolvers)
                         return
                     }
                 }
-                if (currentStrategy !== undefined && solverTile === undefined) {
+                if (currentSolver !== undefined && solverTile === undefined) {
                     setSolverTile(0)
                     return
                 }
                 if (solverTile === undefined) {
                     return
                 }
-                if (currentStrategy !== undefined) {
-                    const newSudoku = solve(currentStrategy.solver, cloneSudoku(sudoku), solverTile, solution)
+                if (currentSolver !== undefined) {
+                    const newSudoku = runSolverStep(currentSolver.solve, cloneSudoku(sudoku), solverTile, solution)
                     const completedTiles = newSudoku
                         .map((tile, index) => ({ tile, index }))
                         .filter(({ tile, index }) => tile.value !== undefined && tile.value !== sudoku[index].value)
                         .map(({ index }) => index)
 
                     completedTiles.forEach((tileIndex) => {
-                        strategyDraftHelpers.forEach((helper) => {
+                        solverDraftHelpers.forEach((helper) => {
                             helper.help(newSudoku, tileIndex)
                         })
                     })
                     setSudoku(newSudoku)
                 }
                 if (solverTile === 80) {
-                    setCurrentStrategy(undefined)
+                    setCurrentSolver(undefined)
                     setSolverTile(undefined)
                     return
                 }
@@ -103,6 +101,6 @@ export const useTick = ({
             return () => {
                 clearInterval(solverInterval)
             }
-        }, [solverTile, sudoku, isSolved, currentStrategy, strategyQueue, strategies, upgradeFeatures, autoStrategyQueueEnabled, strategyDraftHelpers])
+        }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers])
     }
 }

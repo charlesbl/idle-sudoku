@@ -1,4 +1,4 @@
-import { getSquareId } from '../../utils/utils'
+import { getBlockId } from '../../utils/utils'
 import { type SudokuModel } from '../sudoku.model'
 
 export interface DraftHelper {
@@ -20,13 +20,13 @@ export const columnDraftHelper: DraftHelper = {
     }
 }
 
-export const lineDraftHelper: DraftHelper = {
-    id: 'line',
+export const rowDraftHelper: DraftHelper = {
+    id: 'row',
     help: (sudoku: SudokuModel, selectedTile: number): void => {
         const value = sudoku[selectedTile].value
         if (value === undefined) return
-        const line = sudoku.filter((_, index) => Math.floor(index / 9) === Math.floor(selectedTile / 9))
-        line.forEach((tile) => {
+        const row = sudoku.filter((_, index) => Math.floor(index / 9) === Math.floor(selectedTile / 9))
+        row.forEach((tile) => {
             if (tile.value === undefined) {
                 tile.draftNumbers[value - 1] = false
             }
@@ -34,13 +34,13 @@ export const lineDraftHelper: DraftHelper = {
     }
 }
 
-export const squareDraftHelper: DraftHelper = {
-    id: 'square',
+export const blockDraftHelper: DraftHelper = {
+    id: 'block',
     help: (sudoku: SudokuModel, selectedTile: number): void => {
         const value = sudoku[selectedTile].value
         if (value === undefined) return
-        const square = sudoku.filter((_, index) => getSquareId(index) === getSquareId(selectedTile))
-        square.forEach((tile) => {
+        const block = sudoku.filter((_, index) => getBlockId(index) === getBlockId(selectedTile))
+        block.forEach((tile) => {
             if (tile.value === undefined) {
                 tile.draftNumbers[value - 1] = false
             }
@@ -49,7 +49,7 @@ export const squareDraftHelper: DraftHelper = {
 }
 
 export const allDraftHelpers: DraftHelper[] = [
-    lineDraftHelper,
+    rowDraftHelper,
     columnDraftHelper,
-    squareDraftHelper
+    blockDraftHelper
 ]
