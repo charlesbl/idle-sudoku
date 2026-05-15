@@ -294,8 +294,9 @@ const SolverPanel = styled.aside`
     }
 `
 
-const SolverSection = styled.section`
+const SolverSection = styled.section<{ $grow?: boolean }>`
     display: flex;
+    flex: ${props => props.$grow === true ? '1 1 auto' : '0 0 auto'};
     flex-direction: column;
     min-height: 0;
 
@@ -317,6 +318,7 @@ const SolverTitle = styled.div`
 
 const SolverList = styled.div`
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     gap: 0.5rem;
     overflow: auto;
@@ -440,7 +442,7 @@ const QueueList = styled.div`
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
-    max-height: 13rem;
+    height: 13rem;
     overflow: auto;
     scrollbar-width: none;
 
@@ -729,7 +731,7 @@ const App = (): JSX.Element => {
                     </SolverSection>
                 )}
 
-                <SolverSection>
+                <SolverSection $grow>
                     <SolverTitle>
                         Unlocked solvers
                     </SolverTitle>
