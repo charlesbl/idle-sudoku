@@ -88,31 +88,54 @@ const CostButton = styled.button`
 
 interface UpgradeProps {
     locked: boolean
-    upgrade: UpgradeModel
+    upgrade?: UpgradeModel
+    name?: string
+    description?: string
+    cost?: number
+    onPurchase?: () => void
 }
 
 const Upgrade = (props: UpgradeProps): JSX.Element => {
-    const { purchaseUpgrade } = useSudoku()
+    const { money, purchaseUpgrade } = useSudoku()
+    const name = props.upgrade?.name ?? props.name ?? ''
+    const description = props.upgrade?.description ?? props.description ?? ''
+    const cost = props.upgrade?.cost ?? props.cost ?? 0
+    const unaffordable = money < cost
+    const disabled = props.locked || unaffordable
+    const title = props.locked
+        ? 'Finish the previous category first'
+        : unaffordable ? 'Not enough credits' : undefined
+
+    const handlePurchase = (): void => {
+        if (disabled) return
+        if (props.onPurchase !== undefined) {
+            props.onPurchase()
+            return
+        }
+        if (props.upgrade !== undefined) {
+            purchaseUpgrade(props.upgrade)
+        }
+    }
 
     return (
         <UpgradeStyle $locked={props.locked}>
             <Title>
-                {props.upgrade.name}
+                {name}
             </Title>
 
             <Description>
-                {props.upgrade.description}
+                {description}
             </Description>
 
             <Cost>
                 Buy
 
                 <CostButton
-                    disabled={props.locked}
-                    onClick={() => { purchaseUpgrade(props.upgrade) }}
-                    title={props.locked ? 'Finish the previous category first' : undefined}
+                    disabled={disabled}
+                    onClick={handlePurchase}
+                    title={title}
                 >
-                    {props.upgrade.cost}
+                    {cost}
                 </CostButton>
             </Cost>
         </UpgradeStyle>

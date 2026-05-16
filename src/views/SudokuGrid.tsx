@@ -1,6 +1,10 @@
 import { styled } from 'styled-components'
 import Tile from './Tile'
 import { useSudoku } from './hooks/sudoku.context'
+import {
+    getSolverSpeedLevel as getSolverSpeedLevelDetails,
+    getSolverTileScanTimeMs
+} from '../model/solvers/solverSpeed'
 
 const GridStyle = styled.div`
     display: grid;
@@ -26,8 +30,13 @@ const SubGridStyle = styled.div`
 `
 
 const SudokuGrid = (): JSX.Element => {
-    const { sudoku, solverTile, selectedTile, setSelectedTile } = useSudoku()
+    const { currentSolver, getSolverSpeedLevel, sudoku, solverTile, selectedTile, setSelectedTile } = useSudoku()
     if (sudoku === undefined) return <></>
+
+    const solverScanDurationMs = currentSolver !== undefined
+        ? getSolverTileScanTimeMs(getSolverSpeedLevelDetails(getSolverSpeedLevel(currentSolver)))
+        : undefined
+
     return (
         <GridStyle>
             {Array(9).fill(0).map((_, i) => (
@@ -38,6 +47,7 @@ const SudokuGrid = (): JSX.Element => {
                             <Tile
                                 key={j}
                                 onClick={() => { setSelectedTile(tileId) }}
+                                scanDurationMs={solverScanDurationMs}
                                 selected={selectedTile === tileId}
                                 solving={solverTile === tileId}
                                 tileModel={sudoku[tileId]}

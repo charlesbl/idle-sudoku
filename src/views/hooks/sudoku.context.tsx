@@ -7,10 +7,25 @@ import { type SudokuSolver } from '../../model/solvers/sudokuSolver'
 import { useTick } from './tick.effect'
 import { useSolvers } from './solvers.hook'
 import { useUpgrades } from './upgrades.hook'
-import { useMoney } from './money.hook'
+import { CORRECT_TILE_REWARD, useMoney } from './money.hook'
 import { trackSudokuErrors } from '../../model/solvers/errorTracker'
 import { blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../../model/draftHelpers/draftHelpers'
 import { useDraftHelpers } from './draftHelpers.hook'
+import { useSolverSpeeds, type SolverSpeedLevels } from './solverSpeeds.hook'
+import { getSolverSpeedUpgradeCost, maxSolverSpeedLevel } from '../../model/solvers/solverSpeed'
+import { usePuzzleTransition } from './puzzleTransition.hook'
+import {
+    getPuzzleTransitionLevel,
+    getPuzzleTransitionUpgradeCost,
+    maxPuzzleTransitionLevel
+} from '../../model/puzzleTransition'
+import { fillValidDrafts } from '../../model/drafts'
+import { useAutoQueueCooldown } from './autoQueueCooldown.hook'
+import {
+    getAutoQueueCooldownLevel,
+    getAutoQueueCooldownUpgradeCost,
+    maxAutoQueueCooldownLevel
+} from '../../model/autoQueueCooldown'
 
 const DIFFICULTY: CustomDifficulty = 'medium'
 
@@ -31,12 +46,23 @@ export interface SudokuContextModel {
     setSolverQueue: (solvers: SudokuSolver[]) => void
     queueSolver: (solver: SudokuSolver) => void
     setAutoSolverActive: (solver: SudokuSolver, active: boolean) => void
+    solverSpeedLevels: SolverSpeedLevels
+    getSolverSpeedLevel: (solver: SudokuSolver) => number
+    purchaseSolverSpeedUpgrade: (solver: SudokuSolver) => void
+    puzzleTransitionLevel: number
+    puzzleTransitionDelayMs: number
+    purchasePuzzleTransitionUpgrade: () => void
     upgrades: UpgradeModel[]
     upgradeFeatures: UpgradeFeature[]
     setUpgrades: (upgrades: UpgradeModel[]) => void
     hasUpgradeFeature: (feature: UpgradeFeature) => boolean
     autoSolverQueueEnabled: boolean
+    autoSolverCooldownUntil: number | undefined
+    autoQueueCooldownLevel: number
+    autoQueueCooldownDelayMs: number
+    purchaseAutoQueueCooldownUpgrade: () => void
     setAutoSolverQueueEnabled: React.Dispatch<React.SetStateAction<boolean>>
+    setAutoSolverCooldownUntil: React.Dispatch<React.SetStateAction<number | undefined>>
     cheatSolve: () => void
     reset: () => void
     isSolved: boolean
@@ -59,7 +85,9 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [solverTile, setSolverTile] = useLocalStorageState<number | undefined>('solverTile')
     const [draftMode, setDraftMode] = useLocalStorageState<boolean>('draftMode', { defaultValue: false })
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
-    const [autoSolverQueueEnabled, setAutoSolverQueueEnabled] = useLocalStorageState<boolean>('autoSolverQueueEnabled', { defaultValue: true })
+    const [autoSolverQueueEnabled, setStoredAutoSolverQueueEnabled] = useLocalStorageState<boolean>('autoSolverQueueEnabled', { defaultValue: true })
+    const [autoSolverCooldownUntil, setAutoSolverCooldownUntil] = useState<number | undefined>(undefined)
+    const [rewardedTileIndexes, setRewardedTileIndexes] = useLocalStorageState<number[]>('rewardedTileIndexes', { defaultValue: [] })
 
     const { upgrades, upgradeFeatures, setUpgrades, unlockUpgradeFeature } = useUpgrades()
 
@@ -77,6 +105,22 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const { money, addMoney, spend } = useMoney()
     const { draftHelpers, addDraftHelper } = useDraftHelpers()
+    const {
+        solverSpeedLevels,
+        getSolverSpeedLevel,
+        setSolverSpeedLevel,
+        upgradeSolverSpeed
+    } = useSolverSpeeds()
+    const {
+        puzzleTransitionLevel,
+        upgradePuzzleTransition
+    } = usePuzzleTransition()
+    const {
+        autoQueueCooldownLevel,
+        upgradeAutoQueueCooldown
+    } = useAutoQueueCooldown()
+    const puzzleTransitionDelayMs = getPuzzleTransitionLevel(puzzleTransitionLevel).delayMs
+    const autoQueueCooldownDelayMs = getAutoQueueCooldownLevel(autoQueueCooldownLevel).delayMs
     const solverDraftHelpers = [
         upgradeFeatures.includes('solverRowDraftHelper') ? rowDraftHelper : undefined,
         upgradeFeatures.includes('solverColumnDraftHelper') ? columnDraftHelper : undefined,
@@ -87,30 +131,72 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         previousSudoku === undefined ||
         nextSudoku.some((tile, index) => tile.value !== previousSudoku[index]?.value)
 
+    const getRewardableCorrectTiles = (nextSudoku: SudokuModel, previousSudoku?: SudokuModel): number[] => {
+        if (solution === undefined || previousSudoku === undefined) return []
+        const rewardedTileIndexesSet = new Set(rewardedTileIndexes)
+
+        return nextSudoku
+            .map((tile, index) => ({ tile, index }))
+            .filter(({ tile, index }) =>
+                !tile.fixed &&
+                !rewardedTileIndexesSet.has(index) &&
+                tile.value === solution[index] &&
+                previousSudoku[index]?.value !== solution[index]
+            )
+            .map(({ index }) => index)
+    }
+
+    const rewardCorrectTiles = (nextSudoku: SudokuModel, previousSudoku?: SudokuModel): void => {
+        const correctTileIndexes = getRewardableCorrectTiles(nextSudoku, previousSudoku)
+        if (correctTileIndexes.length === 0) return
+
+        setRewardedTileIndexes([...new Set([...rewardedTileIndexes, ...correctTileIndexes])])
+        addMoney(correctTileIndexes.length * CORRECT_TILE_REWARD)
+    }
+
     const setSudoku: React.Dispatch<SetStateAction<SudokuModel | undefined>> = (action) => {
-        setStoredSudoku((previousSudoku) => {
-            const nextSudoku = typeof action === 'function'
-                ? action(previousSudoku)
-                : action
+        const previousSudoku = sudoku
+        const nextSudoku = typeof action === 'function'
+            ? action(previousSudoku)
+            : action
 
-            if (nextSudoku === undefined || solution === undefined) return nextSudoku
-            if (!hasValueUpdate(nextSudoku, previousSudoku)) return nextSudoku
+        if (nextSudoku === undefined || solution === undefined) {
+            setStoredSudoku(nextSudoku)
+            return
+        }
 
-            return trackSudokuErrors(nextSudoku, solution)
-        })
+        if (!hasValueUpdate(nextSudoku, previousSudoku)) {
+            setStoredSudoku(nextSudoku)
+            return
+        }
+
+        const trackedSudoku = trackSudokuErrors(nextSudoku, solution)
+        rewardCorrectTiles(trackedSudoku, previousSudoku)
+        setStoredSudoku(trackedSudoku)
     }
 
     const reset = (): void => {
         const [puzzle, solution] = generateSudoku(DIFFICULTY)
-        setStoredSudoku(puzzle)
+        setStoredSudoku(upgradeFeatures.includes('startWithDrafts') ? fillValidDrafts(puzzle) : puzzle)
         setSolution(solution)
         setIsSolved(false)
         setSolverTile(undefined)
         setCurrentSolver(undefined)
         setSolverQueue([])
+        setAutoSolverCooldownUntil(undefined)
+        setRewardedTileIndexes([])
     }
 
     const hasUpgradeFeature = (feature: UpgradeFeature): boolean => upgradeFeatures.includes(feature)
+
+    const setAutoSolverQueueEnabled: React.Dispatch<React.SetStateAction<boolean>> = (action) => {
+        const nextEnabled = typeof action === 'function'
+            ? action(autoSolverQueueEnabled)
+            : action
+
+        if (!nextEnabled) setAutoSolverCooldownUntil(undefined)
+        setStoredAutoSolverQueueEnabled(nextEnabled)
+    }
 
     const purchaseUpgrade = (upgrade: UpgradeModel): void => {
         const upgradeAvailable = upgrades.some((availableUpgrade) => availableUpgrade.id === upgrade.id)
@@ -122,6 +208,11 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             let newSolvers = [...solvers, upgrade.solver]
             if (upgrade.solver.replaces !== undefined) {
                 const replacedSolverIds = upgrade.solver.replaces.map(solver => solver.id)
+                const inheritedSpeedLevel = Math.max(
+                    getSolverSpeedLevel(upgrade.solver),
+                    ...upgrade.solver.replaces.map(solver => getSolverSpeedLevel(solver))
+                )
+                setSolverSpeedLevel(upgrade.solver, inheritedSpeedLevel)
                 newSolvers = newSolvers.filter(solver => !replacedSolverIds.includes(solver.id))
             }
             setSolvers(newSolvers)
@@ -140,6 +231,38 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         ))
     }
 
+    const purchaseSolverSpeedUpgrade = (solver: SudokuSolver): void => {
+        if (!solvers.some(unlockedSolver => unlockedSolver.id === solver.id)) return
+
+        const currentLevel = getSolverSpeedLevel(solver)
+        if (currentLevel >= maxSolverSpeedLevel) return
+
+        const spent = spend(getSolverSpeedUpgradeCost(currentLevel))
+        if (!spent) return
+
+        upgradeSolverSpeed(solver)
+    }
+
+    const purchasePuzzleTransitionUpgrade = (): void => {
+        if (puzzleTransitionLevel >= maxPuzzleTransitionLevel) return
+
+        const spent = spend(getPuzzleTransitionUpgradeCost(puzzleTransitionLevel))
+        if (!spent) return
+
+        upgradePuzzleTransition()
+    }
+
+    const purchaseAutoQueueCooldownUpgrade = (): void => {
+        if (!upgradeFeatures.includes('autoSolverQueue')) return
+        if (autoQueueCooldownLevel >= maxAutoQueueCooldownLevel) return
+
+        const spent = spend(getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel))
+        if (!spent) return
+
+        setAutoSolverCooldownUntil(undefined)
+        upgradeAutoQueueCooldown()
+    }
+
     const cheatSolve = (): void => {
         if (solution === undefined || sudoku === undefined) return
         const newSudoku = sudoku.map((tile, i) => ({
@@ -147,7 +270,11 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             value: solution[i],
             error: false
         }))
-        setSudoku(newSudoku)
+        setStoredSudoku(newSudoku)
+        setIsSolved(true)
+        setSolverTile(undefined)
+        setCurrentSolver(undefined)
+        setSolverQueue([])
     }
 
     const value: SudokuContextModel = {
@@ -174,13 +301,24 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolverQueue,
         queueSolver,
         setAutoSolverActive,
+        solverSpeedLevels,
+        getSolverSpeedLevel,
+        purchaseSolverSpeedUpgrade,
+        puzzleTransitionLevel,
+        puzzleTransitionDelayMs,
+        purchasePuzzleTransitionUpgrade,
         setSolverTile,
         money,
         addMoney,
         purchaseUpgrade,
         hasUpgradeFeature,
         autoSolverQueueEnabled,
+        autoSolverCooldownUntil,
+        autoQueueCooldownLevel,
+        autoQueueCooldownDelayMs,
+        purchaseAutoQueueCooldownUpgrade,
         setAutoSolverQueueEnabled,
+        setAutoSolverCooldownUntil,
         draftHelpers,
         solverDraftHelpers,
         addDraftHelper

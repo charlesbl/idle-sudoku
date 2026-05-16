@@ -1,8 +1,13 @@
-import styled from 'styled-components'
+import styled, { keyframes } from 'styled-components'
 import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
 import { cloneSudoku } from '../model/sudoku.model'
+import {
+    getSolverSpeedDescription,
+    getSolverSpeedLevel as getSolverSpeedLevelDetails
+} from '../model/solvers/solverSpeed'
+import { formatPuzzleTransitionDelay } from '../model/puzzleTransition'
 
 // TODO add in right panel a button for each solver to activate it and pass only once, queue solvers if the first one is not finished.
 // TODO add selector for difficulty. more difficult = more money.
@@ -130,7 +135,41 @@ const DraftStatus = styled.span<{ $active: boolean }>`
     }
 `
 
+const solvedSweep = keyframes`
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
+    }
+`
+
+const solvedPulse = keyframes`
+    0%,
+    100% {
+        opacity: 0.66;
+        transform: scale(0.98);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+`
+
+const autoQueueCircleClose = keyframes`
+    from {
+        stroke-dashoffset: 75.4;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+`
+
 const BoardShell = styled.div`
+    position: relative;
     box-sizing: border-box;
     width: min(100%, 620px);
     padding: clamp(0.55rem, 1vw, 0.85rem);
@@ -142,12 +181,71 @@ const BoardShell = styled.div`
     box-shadow:
         0 24px 70px rgb(0 0 0 / 38%),
         inset 0 1px 0 rgb(255 255 255 / 8%);
+    overflow: hidden;
 
     @media (width <= 620px) {
         width: 100%;
         max-width: 310px;
         padding: 0.45rem;
     }
+`
+
+const SolvedOverlay = styled.div`
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background:
+        linear-gradient(180deg, rgb(7 10 14 / 60%), rgb(7 10 14 / 84%)),
+        rgb(81 214 194 / 8%);
+    pointer-events: none;
+`
+
+const SolvedOverlayPanel = styled.div`
+    display: grid;
+    gap: 0.85rem;
+    width: min(78%, 22rem);
+    padding: 1rem;
+    border: 1px solid rgb(124 247 220 / 34%);
+    border-radius: 8px;
+    background: rgb(7 10 14 / 82%);
+    box-shadow:
+        0 18px 48px rgb(0 0 0 / 34%),
+        inset 0 1px 0 rgb(255 255 255 / 10%);
+`
+
+const SolvedTitle = styled.div`
+    color: var(--accent-strong);
+    font-size: 1.45rem;
+    font-weight: 900;
+    animation: ${solvedPulse} 900ms ease-in-out infinite;
+`
+
+const SolvedProgress = styled.div<{ $durationMs: number }>`
+    overflow: hidden;
+    height: 0.55rem;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 8%);
+
+    &::after {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--gold));
+        content: "";
+        transform: scaleX(0);
+        transform-origin: left;
+        animation: ${solvedSweep} ${props => Math.max(props.$durationMs, 90)}ms linear forwards;
+    }
+`
+
+const SolvedMeta = styled.div`
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 800;
 `
 
 const LoadingState = styled.div`
@@ -175,6 +273,12 @@ const ActionBar = styled.div`
         width: 100%;
         max-width: 310px;
     }
+`
+
+const DevActionBar = styled(ActionBar)`
+    margin-top: 0.55rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgb(255 255 255 / 13%);
 `
 
 const Tooltip = styled.span`
@@ -266,6 +370,17 @@ const ActionButton = styled.button<{ $active?: boolean }>`
     }
 `
 
+const DevActionButton = styled(ActionButton)`
+    border-color: rgb(248 113 113 / 42%);
+    color: #fecaca;
+    background: linear-gradient(180deg, rgb(248 113 113 / 18%), rgb(127 29 29 / 15%));
+
+    &:hover:not(:disabled) {
+        border-color: rgb(248 113 113 / 72%);
+        background: linear-gradient(180deg, rgb(248 113 113 / 25%), rgb(127 29 29 / 20%));
+    }
+`
+
 const SolverPanel = styled.aside`
     display: flex;
     flex: 0 1 260px;
@@ -316,6 +431,75 @@ const SolverTitle = styled.div`
     text-transform: uppercase;
 `
 
+const QueueHeader = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.9rem;
+`
+
+const QueueTitle = styled(SolverTitle)`
+    margin-bottom: 0;
+`
+
+const QueueControls = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+`
+
+const QueueAutoButton = styled.button<{ $active: boolean }>`
+    min-height: 2rem;
+    padding: 0 0.65rem;
+    border: 1px solid ${props => props.$active ? 'rgb(81 214 194 / 62%)' : 'rgb(255 255 255 / 14%)'};
+    border-radius: 8px;
+    color: ${props => props.$active ? 'var(--accent-strong)' : 'var(--text-muted)'};
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 900;
+    background: ${props => props.$active ? 'rgb(81 214 194 / 13%)' : 'rgb(255 255 255 / 6%)'};
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease;
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 2px;
+    }
+
+    &:hover {
+        border-color: rgb(81 214 194 / 78%);
+        color: var(--accent-strong);
+        background: rgb(81 214 194 / 12%);
+    }
+`
+
+const AutoQueueCooldownCircle = styled.svg<{ $active: boolean, $durationMs: number }>`
+    flex: 0 0 auto;
+    width: 1.8rem;
+    height: 1.8rem;
+    transform: rotate(-90deg);
+
+    circle {
+        stroke-width: 3;
+    }
+
+    .track {
+        stroke: rgb(255 255 255 / 12%);
+    }
+
+    .progress {
+        stroke: ${props => props.$active ? 'var(--accent-strong)' : 'rgb(255 255 255 / 20%)'};
+        stroke-dasharray: 75.4;
+        stroke-dashoffset: ${props => props.$active ? 75.4 : 0};
+        stroke-linecap: round;
+        animation: ${props => props.$active ? autoQueueCircleClose : 'none'} ${props => Math.max(props.$durationMs, 90)}ms linear forwards;
+    }
+`
+
 const SolverList = styled.div`
     display: flex;
     flex: 1 1 auto;
@@ -350,7 +534,7 @@ const SolverButton = styled.button`
     justify-content: space-between;
     flex: 1;
     gap: 0.5rem;
-    min-height: 2.3rem;
+    min-height: 2.85rem;
     min-width: 0;
     padding: 0 0.75rem;
     border: 1px solid rgb(255 255 255 / 10%);
@@ -366,12 +550,6 @@ const SolverButton = styled.button`
         border-color 160ms ease,
         background 160ms ease;
 
-    span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
     &:disabled {
         color: var(--text-muted);
         cursor: not-allowed;
@@ -382,6 +560,29 @@ const SolverButton = styled.button`
         border-color: rgb(244 201 93 / 65%);
         background: rgb(244 201 93 / 12%);
     }
+`
+
+const SolverButtonText = styled.span`
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.12rem;
+    min-width: 0;
+`
+
+const SolverName = styled.span`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`
+
+const SolverSpeed = styled.span`
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `
 
 const AutoSolverToggle = styled.button<{ $active: boolean }>`
@@ -508,14 +709,29 @@ const App = (): JSX.Element => {
         setCurrentSolver,
         queueSolver,
         setAutoSolverActive,
+        getSolverSpeedLevel,
         hasUpgradeFeature,
+        isSolved,
+        puzzleTransitionDelayMs,
         autoSolverQueueEnabled,
+        autoSolverCooldownUntil,
+        autoQueueCooldownDelayMs,
         setAutoSolverQueueEnabled
     } = useSudoku()
     const canQueueSolvers = hasUpgradeFeature('solverQueue') || hasUpgradeFeature('autoSolverQueue')
     const hasAutoQueueUpgrade = hasUpgradeFeature('autoSolverQueue')
     const autoQueueSolvers = hasAutoQueueUpgrade && autoSolverQueueEnabled
     const autoSolverIdSet = new Set(autoSolvers.map(solver => solver.id))
+    const puzzleTransitionDelay = formatPuzzleTransitionDelay(puzzleTransitionDelayMs)
+    const nextGridLabel = `Next grid in ${puzzleTransitionDelay}`
+    const showAutoQueueCooldownCircle = autoQueueCooldownDelayMs > 0
+    const autoQueueCooldownActive = autoSolverCooldownUntil !== undefined &&
+        autoSolverQueueEnabled &&
+        autoSolverCooldownUntil > Date.now()
+    const autoQueueCooldownDurationMs = autoQueueCooldownActive
+        ? autoSolverCooldownUntil - Date.now()
+        : autoQueueCooldownDelayMs
+    const autoQueueLabel = `Auto queue: ${autoSolverQueueEnabled ? 'On' : 'Off'}`
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key !== ' ' && e.key !== '0') return
@@ -628,6 +844,14 @@ const App = (): JSX.Element => {
                         </InfoValue>
                     </InfoCard>
 
+                    <InfoCard>
+                        <InfoLabel>Next grid</InfoLabel>
+
+                        <InfoValue $accent={isSolved}>
+                            {puzzleTransitionDelay}
+                        </InfoValue>
+                    </InfoCard>
+
                     {canQueueSolvers && (
                         <InfoCard>
                             <InfoLabel>Queue</InfoLabel>
@@ -647,6 +871,20 @@ const App = (): JSX.Element => {
                         : (
                             <SudokuGrid />
                         )}
+
+                    {isSolved && (
+                        <SolvedOverlay>
+                            <SolvedOverlayPanel>
+                                <SolvedTitle>Solved</SolvedTitle>
+
+                                <SolvedProgress $durationMs={puzzleTransitionDelayMs} />
+
+                                <SolvedMeta>
+                                    {nextGridLabel}
+                                </SolvedMeta>
+                            </SolvedOverlayPanel>
+                        </SolvedOverlay>
+                    )}
                 </BoardShell>
 
                 <ActionBar>
@@ -677,8 +915,6 @@ const App = (): JSX.Element => {
                         </Tooltip>
                     </TooltipAnchor>
 
-                    <ActionButton onClick={cheatSolve}>Reveal solution</ActionButton>
-
                     <ActionButton onClick={() => {
                         reset()
                     }}
@@ -686,26 +922,61 @@ const App = (): JSX.Element => {
                         New puzzle
                     </ActionButton>
 
-                    {hasAutoQueueUpgrade && (
-                        <ActionButton
-                            onClick={() => { setAutoSolverQueueEnabled(!autoSolverQueueEnabled) }}
-                        >
-                            Auto queue:
-
-                            {autoSolverQueueEnabled ? 'On' : 'Off'}
-                        </ActionButton>
-                    )}
-
                     <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
                 </ActionBar>
+
+                <DevActionBar>
+                    <DevActionButton onClick={cheatSolve}>Reveal solution</DevActionButton>
+                </DevActionBar>
             </SudokuLayout>
 
             <SolverPanel>
                 {canQueueSolvers && (
                     <SolverSection>
-                        <SolverTitle>
-                            Queued solvers
-                        </SolverTitle>
+                        <QueueHeader>
+                            <QueueTitle>
+                                Queued solvers
+                            </QueueTitle>
+
+                            {hasAutoQueueUpgrade && (
+                                <QueueControls>
+                                    {showAutoQueueCooldownCircle && (
+                                        <AutoQueueCooldownCircle
+                                            $active={autoQueueCooldownActive}
+                                            $durationMs={autoQueueCooldownDurationMs}
+                                            aria-hidden="true"
+                                            key={autoSolverCooldownUntil ?? 'auto-queue-idle'}
+                                            viewBox="0 0 28 28"
+                                        >
+                                            <circle
+                                                className="track"
+                                                cx="14"
+                                                cy="14"
+                                                fill="none"
+                                                r="12"
+                                            />
+
+                                            <circle
+                                                className="progress"
+                                                cx="14"
+                                                cy="14"
+                                                fill="none"
+                                                r="12"
+                                            />
+                                        </AutoQueueCooldownCircle>
+                                    )}
+
+                                    <QueueAutoButton
+                                        $active={autoSolverQueueEnabled}
+                                        aria-pressed={autoSolverQueueEnabled}
+                                        onClick={() => { setAutoSolverQueueEnabled(!autoSolverQueueEnabled) }}
+                                        type="button"
+                                    >
+                                        {autoQueueLabel}
+                                    </QueueAutoButton>
+                                </QueueControls>
+                            )}
+                        </QueueHeader>
 
                         <QueueList>
                             {solverQueue.length > 0
@@ -741,6 +1012,9 @@ const App = (): JSX.Element => {
                             ? solvers.map((solver) => {
                                 const queuedCount = solverQueue.filter(queuedSolver => queuedSolver.id === solver.id).length
                                 const autoSolverActive = autoSolverIdSet.has(solver.id)
+                                const speedLevel = getSolverSpeedLevel(solver)
+                                const speed = getSolverSpeedLevelDetails(speedLevel)
+                                const speedDescription = `Lv ${speedLevel + 1} - ${speed.label} - ${getSolverSpeedDescription(speed)}`
 
                                 return (
                                     <SolverRow
@@ -757,7 +1031,13 @@ const App = (): JSX.Element => {
                                                 setCurrentSolver(solver)
                                             }}
                                         >
-                                            <span>{solver.name}</span>
+                                            <SolverButtonText>
+                                                <SolverName>{solver.name}</SolverName>
+
+                                                <SolverSpeed>
+                                                    {speedDescription}
+                                                </SolverSpeed>
+                                            </SolverButtonText>
 
                                             {queuedCount > 0 && (
                                                 <SolverQueueBadge>

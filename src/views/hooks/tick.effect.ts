@@ -2,8 +2,10 @@ import { useEffect } from 'react'
 import { type SudokuContextModel } from './sudoku.context'
 import { runSolverStep } from '../../model/solvers/solver'
 import { cloneSudoku } from '../../model/sudoku.model'
+import { getSolverSpeedLevel as getSolverSpeedLevelDetails } from '../../model/solvers/solverSpeed'
+import { PUZZLE_COMPLETE_BONUS } from './money.hook'
 
-const SOLVER_TICK_TIME = 10
+const SOLVER_IDLE_TICK_TIME = 80
 
 export const useTick = ({
     sudoku,
@@ -22,53 +24,101 @@ export const useTick = ({
     upgradeFeatures,
     autoSolverQueueEnabled,
     solverDraftHelpers,
-    addMoney
+    addMoney,
+    solverSpeedLevels,
+    getSolverSpeedLevel,
+    puzzleTransitionDelayMs,
+    autoSolverCooldownUntil,
+    setAutoSolverCooldownUntil,
+    autoQueueCooldownDelayMs
 }: SudokuContextModel): () => void => {
-    const nextTile = (): void => {
-        if (solverTile === undefined) return
-        setSolverTile((solverTile + 1) % 81)
-        // const remainingIds = sudoku?.map((tile, i) => ({ ...tile, i })).filter(tile => tile.value === undefined).map(tile => tile.i)
-        // if (remainingIds === undefined) return
-        // setSolverTile(remainingIds[Math.floor(Math.random() * remainingIds.length)])
-    }
-
     const checkSolved = (): boolean =>
         sudoku !== undefined &&
         solution !== undefined &&
         sudoku.every((tile, i) => solution[i] === tile.value)
+    const getTickTime = (): number => {
+        if (currentSolver === undefined || solverTile === undefined) return SOLVER_IDLE_TICK_TIME
+        return getSolverSpeedLevelDetails(getSolverSpeedLevel(currentSolver)).tileTimeMs
+    }
+    const getNextSolver = (): { nextSolver: typeof currentSolver, nextQueue: typeof solverQueue } => {
+        const queuedSolver = solverQueue[0]
+        if (queuedSolver !== undefined) {
+            setAutoSolverCooldownUntil(undefined)
+            return {
+                nextSolver: queuedSolver,
+                nextQueue: solverQueue.slice(1)
+            }
+        }
+
+        if (upgradeFeatures.includes('autoSolverQueue') && autoSolverQueueEnabled && autoSolvers.length > 0) {
+            if (autoQueueCooldownDelayMs > 0 && autoSolverCooldownUntil === undefined) {
+                setAutoSolverCooldownUntil(Date.now() + autoQueueCooldownDelayMs)
+                return {
+                    nextSolver: undefined,
+                    nextQueue: []
+                }
+            }
+
+            if (autoSolverCooldownUntil !== undefined && autoSolverCooldownUntil > Date.now()) {
+                return {
+                    nextSolver: undefined,
+                    nextQueue: []
+                }
+            }
+
+            setAutoSolverCooldownUntil(undefined)
+            return {
+                nextSolver: autoSolvers[0],
+                nextQueue: autoSolvers.slice(1)
+            }
+        }
+
+        if (autoSolverCooldownUntil !== undefined) setAutoSolverCooldownUntil(undefined)
+
+        return {
+            nextSolver: undefined,
+            nextQueue: []
+        }
+    }
+    const startNextSolver = (): boolean => {
+        const { nextSolver, nextQueue } = getNextSolver()
+        if (nextSolver === undefined) return false
+
+        setSolverQueue(nextQueue)
+        setCurrentSolver(nextSolver)
+        setSolverTile(0)
+        return true
+    }
+
     return (): void => {
         useEffect(() => {
-            const solverInterval = setInterval(() => {
-                if (isSolved) {
-                    clearInterval(solverInterval)
-                    setTimeout(() => {
-                        reset()
-                    }, 2000)
-                    return
+            if (isSolved) {
+                const resetTimeout = setTimeout(() => {
+                    reset()
+                }, puzzleTransitionDelayMs)
+
+                return () => {
+                    clearTimeout(resetTimeout)
                 }
+            }
+
+            const solverInterval = setInterval(() => {
                 if (sudoku === undefined || solution === undefined) {
                     reset()
                     return
                 }
                 if (checkSolved()) {
+                    clearInterval(solverInterval)
                     setIsSolved(true)
                     setSolverTile(undefined)
                     setCurrentSolver(undefined)
                     setSolverQueue([])
-                    addMoney(1)
+                    addMoney(PUZZLE_COMPLETE_BONUS)
                     return
                 }
                 if (currentSolver === undefined && solverTile === undefined) {
-                    const queuedSolver = solverQueue[0]
-                    if (queuedSolver !== undefined) {
-                        setSolverQueue(solverQueue.slice(1))
-                        setCurrentSolver(queuedSolver)
-                        return
-                    }
-                    if (upgradeFeatures.includes('autoSolverQueue') && autoSolverQueueEnabled && autoSolvers.length > 0) {
-                        setSolverQueue(autoSolvers)
-                        return
-                    }
+                    startNextSolver()
+                    return
                 }
                 if (currentSolver !== undefined && solverTile === undefined) {
                     setSolverTile(0)
@@ -78,29 +128,45 @@ export const useTick = ({
                     return
                 }
                 if (currentSolver !== undefined) {
-                    const newSudoku = runSolverStep(currentSolver.solve, cloneSudoku(sudoku), solverTile, solution)
-                    const completedTiles = newSudoku
-                        .map((tile, index) => ({ tile, index }))
-                        .filter(({ tile, index }) => tile.value !== undefined && tile.value !== sudoku[index].value)
-                        .map(({ index }) => index)
+                    const speed = getSolverSpeedLevelDetails(getSolverSpeedLevel(currentSolver))
+                    let newSudoku = cloneSudoku(sudoku)
+                    let nextSolverTile = solverTile
+                    let solverCompletedPass = false
 
-                    completedTiles.forEach((tileIndex) => {
-                        solverDraftHelpers.forEach((helper) => {
-                            helper.help(newSudoku, tileIndex)
-                        })
-                    })
+                    for (let scan = 0; scan < speed.tilesPerTick; scan++) {
+                        const previousValue = newSudoku[nextSolverTile].value
+                        newSudoku = runSolverStep(currentSolver.solve, newSudoku, nextSolverTile, solution)
+
+                        if (newSudoku[nextSolverTile].value !== undefined && newSudoku[nextSolverTile].value !== previousValue) {
+                            solverDraftHelpers.forEach((helper) => {
+                                helper.help(newSudoku, nextSolverTile)
+                            })
+                        }
+
+                        if (nextSolverTile === 80) {
+                            solverCompletedPass = true
+                            break
+                        }
+
+                        nextSolverTile++
+                    }
+
                     setSudoku(newSudoku)
+
+                    if (solverCompletedPass) {
+                        if (!startNextSolver()) {
+                            setCurrentSolver(undefined)
+                            setSolverTile(undefined)
+                        }
+                        return
+                    }
+
+                    setSolverTile(nextSolverTile)
                 }
-                if (solverTile === 80) {
-                    setCurrentSolver(undefined)
-                    setSolverTile(undefined)
-                    return
-                }
-                nextTile()
-            }, SOLVER_TICK_TIME)
+            }, getTickTime())
             return () => {
                 clearInterval(solverInterval)
             }
-        }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers])
+        }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers, solverSpeedLevels, puzzleTransitionDelayMs, autoSolverCooldownUntil, autoQueueCooldownDelayMs])
     }
 }

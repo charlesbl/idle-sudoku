@@ -21,6 +21,7 @@ export type UpgradeCategory =
     | 'solverQueue'
     | 'draftCleanup'
     | 'draftSetup'
+    | 'startingDrafts'
     | 'advancedSingles'
     | 'solverAutomation'
     | 'automaticHelpers'
@@ -28,6 +29,7 @@ export type UpgradeCategory =
 export type UpgradeFeature =
     | 'solverQueue'
     | 'autoSolverQueue'
+    | 'startWithDrafts'
     | 'solverRowDraftHelper'
     | 'solverColumnDraftHelper'
     | 'solverBlockDraftHelper'
@@ -38,6 +40,7 @@ export const upgradeCategoryOrder: UpgradeCategory[] = [
     'solverQueue',
     'draftCleanup',
     'draftSetup',
+    'startingDrafts',
     'advancedSingles',
     'solverAutomation',
     'automaticHelpers'
@@ -49,6 +52,7 @@ export const upgradeCategoryLabels: Record<UpgradeCategory, string> = {
     solverQueue: 'Solver queue',
     draftCleanup: 'Draft cleanup',
     draftSetup: 'Draft setup',
+    startingDrafts: 'Starting drafts',
     advancedSingles: 'Advanced singles',
     solverAutomation: 'Automation',
     automaticHelpers: 'Automatic helpers'
@@ -73,7 +77,7 @@ export const allUpgrades: UpgradeModel[] = [
         id: `${rowDraftHelper.id}-draft-helper-upgrade`,
         name: 'Row draft helper',
         category: 'draftHelpers',
-        cost: 1,
+        cost: 4,
         description: 'When you place a number, remove its draft from the other cells in the row.',
         draftHelper: rowDraftHelper
     },
@@ -81,7 +85,7 @@ export const allUpgrades: UpgradeModel[] = [
         id: `${columnDraftHelper.id}-draft-helper-upgrade`,
         name: 'Column draft helper',
         category: 'draftHelpers',
-        cost: 1,
+        cost: 4,
         description: 'When you place a number, remove its draft from the other cells in the column.',
         draftHelper: columnDraftHelper
     },
@@ -89,32 +93,40 @@ export const allUpgrades: UpgradeModel[] = [
         id: `${blockDraftHelper.id}-draft-helper-upgrade`,
         name: 'Block draft helper',
         category: 'draftHelpers',
-        cost: 1,
+        cost: 4,
         description: 'When you place a number, remove its draft from the other cells in the block.',
         draftHelper: blockDraftHelper
     },
     // single drafts
-    createSolverUpgrade(singleDraftInRowSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the row.', 1),
-    createSolverUpgrade(singleDraftInColumnSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the column.', 1),
-    createSolverUpgrade(singleDraftInBlockSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the block.', 1),
-    createSolverUpgrade(onlyDraftInCellSolver, 'singleDrafts', 'Place a number when a cell has only one draft left.', 1),
+    createSolverUpgrade(singleDraftInRowSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the row.', 10),
+    createSolverUpgrade(singleDraftInColumnSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the column.', 10),
+    createSolverUpgrade(singleDraftInBlockSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the block.', 10),
+    createSolverUpgrade(onlyDraftInCellSolver, 'singleDrafts', 'Place a number when a cell has only one draft left.', 12),
     {
         id: 'solver-queue-upgrade',
         name: 'Solver queue',
         category: 'solverQueue',
-        cost: 1,
+        cost: 18,
         description: 'Queue solvers while another solver is already running.',
         feature: 'solverQueue'
     },
     // merged solvers
-    createSolverUpgrade(clearImpossibleDraftsSolver, 'draftCleanup', 'Merges row, column, and block cleanup into one solver, replacing the separate cleanup solvers.', 1),
-    createSolverUpgrade(calculateValidDraftsSolver, 'draftSetup', 'Merges draft filling and cleanup into one solver, replacing the separate draft setup solvers.', 1),
-    createSolverUpgrade(findSingleDraftsSolver, 'advancedSingles', 'Merges the row, column, block, and cell single-draft solvers into one solver, replacing the separate versions.', 1),
+    createSolverUpgrade(clearImpossibleDraftsSolver, 'draftCleanup', 'Merges row, column, and block cleanup into one solver, replacing the separate cleanup solvers.', 24),
+    createSolverUpgrade(calculateValidDraftsSolver, 'draftSetup', 'Merges draft filling and cleanup into one solver, replacing the separate draft setup solvers.', 35),
+    {
+        id: 'start-with-drafts-upgrade',
+        name: 'Prepared drafts',
+        category: 'startingDrafts',
+        cost: 50,
+        description: 'Start every new grid with valid drafts already filled in every empty cell.',
+        feature: 'startWithDrafts'
+    },
+    createSolverUpgrade(findSingleDraftsSolver, 'advancedSingles', 'Merges the row, column, block, and cell single-draft solvers into one solver, replacing the separate versions.', 45),
     {
         id: 'auto-solver-queue-upgrade',
         name: 'Auto-run solvers',
         category: 'solverAutomation',
-        cost: 1,
+        cost: 55,
         description: 'Automatically run every unlocked solver when the queue is empty.',
         feature: 'autoSolverQueue'
     },
@@ -122,7 +134,7 @@ export const allUpgrades: UpgradeModel[] = [
         id: 'solver-row-draft-helper-upgrade',
         name: 'Auto row draft helper',
         category: 'automaticHelpers',
-        cost: 1,
+        cost: 25,
         description: 'When a solver places a number, remove its draft from the other cells in the row.',
         feature: 'solverRowDraftHelper'
     },
@@ -130,7 +142,7 @@ export const allUpgrades: UpgradeModel[] = [
         id: 'solver-column-draft-helper-upgrade',
         name: 'Auto column draft helper',
         category: 'automaticHelpers',
-        cost: 1,
+        cost: 25,
         description: 'When a solver places a number, remove its draft from the other cells in the column.',
         feature: 'solverColumnDraftHelper'
     },
@@ -138,7 +150,7 @@ export const allUpgrades: UpgradeModel[] = [
         id: 'solver-block-draft-helper-upgrade',
         name: 'Auto block draft helper',
         category: 'automaticHelpers',
-        cost: 1,
+        cost: 25,
         description: 'When a solver places a number, remove its draft from the other cells in the block.',
         feature: 'solverBlockDraftHelper'
     }
