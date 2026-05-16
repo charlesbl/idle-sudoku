@@ -1,7 +1,7 @@
 import { type PropsWithChildren, type SetStateAction, createContext, useContext, useState } from 'react'
 import type React from 'react'
 import { type CustomDifficulty, generateSudoku, type SudokuModel } from '../../model/sudoku.model'
-import { getUnlockedUpgradeCategory, type UpgradeFeature, type UpgradeModel } from '../../model/upgrades/upgrade'
+import { getCurrentUnlockUpgradeCategory, type UnlockUpgradeModel, type UpgradeFeature } from '../../model/upgrades/unlockUpgrade'
 import useLocalStorageState from 'use-local-storage-state'
 import { type SudokuSolver } from '../../model/solvers/sudokuSolver'
 import { useTick } from './tick.effect'
@@ -52,9 +52,9 @@ export interface SudokuContextModel {
     puzzleTransitionLevel: number
     puzzleTransitionDelayMs: number
     purchasePuzzleTransitionUpgrade: () => void
-    upgrades: UpgradeModel[]
+    unlockUpgrades: UnlockUpgradeModel[]
     upgradeFeatures: UpgradeFeature[]
-    setUpgrades: (upgrades: UpgradeModel[]) => void
+    setUnlockUpgrades: (upgrades: UnlockUpgradeModel[]) => void
     hasUpgradeFeature: (feature: UpgradeFeature) => boolean
     autoSolverQueueEnabled: boolean
     autoSolverCooldownUntil: number | undefined
@@ -70,7 +70,7 @@ export interface SudokuContextModel {
     setSolverTile: React.Dispatch<React.SetStateAction<number | undefined>>
     money: number
     addMoney: (amount: number) => void
-    purchaseUpgrade: (upgrade: UpgradeModel) => void
+    purchaseUnlockUpgrade: (upgrade: UnlockUpgradeModel) => void
     draftHelpers: DraftHelper[]
     solverDraftHelpers: DraftHelper[]
     addDraftHelper: (id: string) => void
@@ -89,7 +89,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [autoSolverCooldownUntil, setAutoSolverCooldownUntil] = useState<number | undefined>(undefined)
     const [rewardedTileIndexes, setRewardedTileIndexes] = useLocalStorageState<number[]>('rewardedTileIndexes', { defaultValue: [] })
 
-    const { upgrades, upgradeFeatures, setUpgrades, unlockUpgradeFeature } = useUpgrades()
+    const { unlockUpgrades, upgradeFeatures, setUnlockUpgrades, unlockUpgradeFeature } = useUpgrades()
 
     const {
         setCurrentSolver,
@@ -198,9 +198,9 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setStoredAutoSolverQueueEnabled(nextEnabled)
     }
 
-    const purchaseUpgrade = (upgrade: UpgradeModel): void => {
-        const upgradeAvailable = upgrades.some((availableUpgrade) => availableUpgrade.id === upgrade.id)
-        if (!upgradeAvailable || upgrade.category !== getUnlockedUpgradeCategory(upgrades)) return
+    const purchaseUnlockUpgrade = (upgrade: UnlockUpgradeModel): void => {
+        const upgradeAvailable = unlockUpgrades.some((availableUpgrade) => availableUpgrade.id === upgrade.id)
+        if (!upgradeAvailable || upgrade.category !== getCurrentUnlockUpgradeCategory(unlockUpgrades)) return
 
         const spent = spend(upgrade.cost)
         if (!spent) return
@@ -225,7 +225,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             if (upgrade.feature === 'autoSolverQueue') setAutoSolverQueueEnabled(true)
         }
         const replacedSolverIds = upgrade.solver?.replaces?.map(solver => solver.id) ?? []
-        setUpgrades(upgrades.filter((u) =>
+        setUnlockUpgrades(unlockUpgrades.filter((u) =>
             u.id !== upgrade.id &&
             (u.solver === undefined || !replacedSolverIds.includes(u.solver.id))
         ))
@@ -290,9 +290,9 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         autoSolvers,
         currentSolver,
         solverQueue,
-        upgrades,
+        unlockUpgrades,
         upgradeFeatures,
-        setUpgrades,
+        setUnlockUpgrades,
         cheatSolve,
         reset,
         isSolved,
@@ -310,7 +310,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolverTile,
         money,
         addMoney,
-        purchaseUpgrade,
+        purchaseUnlockUpgrade,
         hasUpgradeFeature,
         autoSolverQueueEnabled,
         autoSolverCooldownUntil,

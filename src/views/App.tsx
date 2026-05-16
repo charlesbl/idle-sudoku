@@ -702,9 +702,9 @@ const App = (): JSX.Element => {
         autoSolvers,
         currentSolver,
         solverQueue,
-        cheatSolve,
         reset,
         money,
+        addMoney,
         draftHelpers,
         setCurrentSolver,
         queueSolver,
@@ -926,7 +926,7 @@ const App = (): JSX.Element => {
                 </ActionBar>
 
                 <DevActionBar>
-                    <DevActionButton onClick={cheatSolve}>Reveal solution</DevActionButton>
+                    <DevActionButton onClick={() => { addMoney(1000) }}>Give 1000</DevActionButton>
                 </DevActionBar>
             </SudokuLayout>
 

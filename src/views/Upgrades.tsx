@@ -1,7 +1,18 @@
+import { useState } from 'react'
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
 import { useSudoku } from './hooks/sudoku.context'
-import { getUnlockedUpgradeCategory, upgradeCategoryLabels, upgradeCategoryOrder } from '../model/upgrades/upgrade'
+import { type UpgradeKind, upgradeKindLabels } from '../model/upgrades/upgrade'
+import {
+    getCurrentUnlockUpgradeCategory,
+    unlockUpgradeCategoryLabels,
+    unlockUpgradeCategoryOrder
+} from '../model/upgrades/unlockUpgrade'
+import {
+    speedUpgradeCategoryLabels,
+    speedUpgradeCategoryOrder,
+    type SpeedUpgradeModel
+} from '../model/upgrades/speedUpgrade'
 import {
     getSolverSpeedDescription,
     getSolverSpeedLevel as getSolverSpeedLevelDetails,
@@ -19,6 +30,10 @@ import {
     getAutoQueueCooldownUpgradeCost,
     maxAutoQueueCooldownLevel
 } from '../model/autoQueueCooldown'
+
+interface PurchasableSpeedUpgrade extends SpeedUpgradeModel {
+    handlePurchase: () => void
+}
 
 const UpgradesStyle = styled.aside`
     display: flex;
@@ -51,11 +66,55 @@ const UpgradesStyle = styled.aside`
 `
 
 const Title = styled.div`
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.7rem;
     color: #f8fafc;
     font-size: 1.45rem;
     font-weight: bold;
     text-align: center;
+`
+
+const TabList = styled.div`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+    padding: 0.25rem;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 8px;
+    background: rgb(0 0 0 / 15%);
+`
+
+const TabButton = styled.button<{ $active: boolean }>`
+    min-width: 0;
+    min-height: 2.2rem;
+    border: 1px solid ${props => props.$active ? 'rgb(81 214 194 / 56%)' : 'transparent'};
+    border-radius: 7px;
+    color: ${props => props.$active ? 'var(--accent-strong)' : 'var(--text-muted)'};
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 900;
+    background: ${props => props.$active ? 'rgb(81 214 194 / 13%)' : 'transparent'};
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease;
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        color: rgb(154 165 182 / 38%);
+        cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+        border-color: rgb(81 214 194 / 42%);
+        color: var(--accent-strong);
+        background: rgb(81 214 194 / 9%);
+    }
 `
 
 const UpgradesContainer = styled.div`
@@ -98,7 +157,7 @@ const EmptyState = styled.div`
 
 const Upgrades = (): JSX.Element => {
     const {
-        upgrades,
+        unlockUpgrades,
         solvers,
         getSolverSpeedLevel,
         hasUpgradeFeature,
@@ -108,14 +167,15 @@ const Upgrades = (): JSX.Element => {
         autoQueueCooldownLevel,
         purchaseAutoQueueCooldownUpgrade
     } = useSudoku()
-    const unlockedUpgradeCategory = getUnlockedUpgradeCategory(upgrades)
-    const upgradeSections = upgradeCategoryOrder
+    const [selectedUpgradeKind, setSelectedUpgradeKind] = useState<UpgradeKind>('unlock')
+    const currentUnlockUpgradeCategory = getCurrentUnlockUpgradeCategory(unlockUpgrades)
+    const unlockUpgradeSections = unlockUpgradeCategoryOrder
         .map(category => ({
             category,
-            upgrades: upgrades.filter(upgrade => upgrade.category === category)
+            upgrades: unlockUpgrades.filter(upgrade => upgrade.category === category)
         }))
         .filter(section => section.upgrades.length > 0)
-    const speedUpgrades = solvers
+    const solverSpeedUpgrades: PurchasableSpeedUpgrade[] = solvers
         .map((solver) => {
             const currentLevel = getSolverSpeedLevel(solver)
             const nextLevel = currentLevel + 1
@@ -123,11 +183,17 @@ const Upgrades = (): JSX.Element => {
             const nextSpeed = getSolverSpeedLevelDetails(nextLevel)
 
             return {
+                kind: 'speed' as const,
+                id: `${solver.id}-speed-${nextLevel}`,
                 solver,
+                name: `${solver.name} speed`,
+                category: 'solverSpeed' as const,
                 currentLevel,
                 currentSpeed,
                 nextSpeed,
-                cost: getSolverSpeedUpgradeCost(currentLevel)
+                cost: getSolverSpeedUpgradeCost(currentLevel),
+                description: `Level ${currentLevel + 1}/${maxSolverSpeedLevel + 1}. ${currentSpeed.label} (${getSolverSpeedDescription(currentSpeed)}) -> ${nextSpeed.label} (${getSolverSpeedDescription(nextSpeed)}).`,
+                handlePurchase: () => { purchaseSolverSpeedUpgrade(solver) }
             }
         })
         .filter(speedUpgrade => speedUpgrade.currentLevel < maxSolverSpeedLevel)
@@ -138,10 +204,47 @@ const Upgrades = (): JSX.Element => {
     const nextAutoQueueCooldown = getAutoQueueCooldownLevel(autoQueueCooldownLevel + 1)
     const hasAutoQueueCooldownUpgrade = hasUpgradeFeature('autoSolverQueue') &&
         autoQueueCooldownLevel < maxAutoQueueCooldownLevel
-    const hasAvailableUpgrades = upgrades.length > 0 ||
-        speedUpgrades.length > 0 ||
-        hasPuzzleTransitionUpgrade ||
-        hasAutoQueueCooldownUpgrade
+    const gridTimingSpeedUpgrade: PurchasableSpeedUpgrade | undefined = hasPuzzleTransitionUpgrade
+        ? {
+            kind: 'speed',
+            id: `puzzle-transition-${puzzleTransitionLevel + 1}`,
+            name: 'New grid timing',
+            category: 'gridTiming',
+            cost: getPuzzleTransitionUpgradeCost(puzzleTransitionLevel),
+            description: `Level ${puzzleTransitionLevel + 1}/${maxPuzzleTransitionLevel + 1}. ${currentPuzzleTransition.label} (${formatPuzzleTransitionDelay(currentPuzzleTransition.delayMs)}) -> ${nextPuzzleTransition.label} (${formatPuzzleTransitionDelay(nextPuzzleTransition.delayMs)}).`,
+            handlePurchase: purchasePuzzleTransitionUpgrade
+        }
+        : undefined
+    const autoQueueCooldownSpeedUpgrade: PurchasableSpeedUpgrade | undefined = hasAutoQueueCooldownUpgrade
+        ? {
+            kind: 'speed',
+            id: `auto-queue-cooldown-${autoQueueCooldownLevel + 1}`,
+            name: 'Auto queue restart',
+            category: 'autoQueueCooldown',
+            cost: getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel),
+            description: `Level ${autoQueueCooldownLevel + 1}/${maxAutoQueueCooldownLevel + 1}. ${currentAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(currentAutoQueueCooldown.delayMs)}) -> ${nextAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(nextAutoQueueCooldown.delayMs)}).`,
+            handlePurchase: purchaseAutoQueueCooldownUpgrade
+        }
+        : undefined
+    const speedUpgrades = [
+        ...solverSpeedUpgrades,
+        ...(gridTimingSpeedUpgrade !== undefined ? [gridTimingSpeedUpgrade] : []),
+        ...(autoQueueCooldownSpeedUpgrade !== undefined ? [autoQueueCooldownSpeedUpgrade] : [])
+    ]
+    const speedUpgradeSections = speedUpgradeCategoryOrder
+        .map(category => ({
+            category,
+            upgrades: speedUpgrades.filter(upgrade => upgrade.category === category)
+        }))
+        .filter(section => section.upgrades.length > 0)
+    const hasUnlockUpgrades = unlockUpgrades.length > 0
+    const hasSpeedUpgrades = speedUpgrades.length > 0
+    const hasAvailableUpgrades = hasUnlockUpgrades || hasSpeedUpgrades
+    const activeUpgradeKind = selectedUpgradeKind === 'unlock' && !hasUnlockUpgrades && hasSpeedUpgrades
+        ? 'speed'
+        : selectedUpgradeKind === 'speed' && !hasSpeedUpgrades && hasUnlockUpgrades
+            ? 'unlock'
+            : selectedUpgradeKind
 
     return (
         <UpgradesStyle>
@@ -149,80 +252,77 @@ const Upgrades = (): JSX.Element => {
 
             {hasAvailableUpgrades
                 ? (
-                    <UpgradesContainer>
-                        {speedUpgrades.length > 0 && (
-                            <UpgradeSection>
-                                <CategoryTitle>Solver speed</CategoryTitle>
+                    <>
+                        <TabList
+                            aria-label="Upgrade type"
+                            role="tablist"
+                        >
+                            <TabButton
+                                $active={activeUpgradeKind === 'unlock'}
+                                aria-selected={activeUpgradeKind === 'unlock'}
+                                disabled={!hasUnlockUpgrades}
+                                onClick={() => { setSelectedUpgradeKind('unlock') }}
+                                role="tab"
+                                type="button"
+                            >
+                                {upgradeKindLabels.unlock}
+                            </TabButton>
 
-                                <CategoryList>
-                                    {speedUpgrades.map((speedUpgrade) => (
-                                        <Upgrade
-                                            cost={speedUpgrade.cost}
-                                            description={`Level ${speedUpgrade.currentLevel + 1}/${maxSolverSpeedLevel + 1}. ${speedUpgrade.currentSpeed.label} (${getSolverSpeedDescription(speedUpgrade.currentSpeed)}) -> ${speedUpgrade.nextSpeed.label} (${getSolverSpeedDescription(speedUpgrade.nextSpeed)}).`}
-                                            key={`${speedUpgrade.solver.id}-speed-${speedUpgrade.currentLevel + 1}`}
-                                            locked={false}
-                                            name={`${speedUpgrade.solver.name} speed`}
-                                            onPurchase={() => { purchaseSolverSpeedUpgrade(speedUpgrade.solver) }}
-                                        />
-                                    ))}
-                                </CategoryList>
-                            </UpgradeSection>
-                        )}
+                            <TabButton
+                                $active={activeUpgradeKind === 'speed'}
+                                aria-selected={activeUpgradeKind === 'speed'}
+                                disabled={!hasSpeedUpgrades}
+                                onClick={() => { setSelectedUpgradeKind('speed') }}
+                                role="tab"
+                                type="button"
+                            >
+                                {upgradeKindLabels.speed}
+                            </TabButton>
+                        </TabList>
 
-                        {hasPuzzleTransitionUpgrade && (
-                            <UpgradeSection>
-                                <CategoryTitle>Grid timing</CategoryTitle>
+                        <UpgradesContainer>
+                            {activeUpgradeKind === 'unlock' && unlockUpgradeSections.map((section) => {
+                                const locked = section.category !== currentUnlockUpgradeCategory
 
-                                <CategoryList>
-                                    <Upgrade
-                                        cost={getPuzzleTransitionUpgradeCost(puzzleTransitionLevel)}
-                                        description={`Level ${puzzleTransitionLevel + 1}/${maxPuzzleTransitionLevel + 1}. ${currentPuzzleTransition.label} (${formatPuzzleTransitionDelay(currentPuzzleTransition.delayMs)}) -> ${nextPuzzleTransition.label} (${formatPuzzleTransitionDelay(nextPuzzleTransition.delayMs)}).`}
-                                        locked={false}
-                                        name="New grid timing"
-                                        onPurchase={purchasePuzzleTransitionUpgrade}
-                                    />
-                                </CategoryList>
-                            </UpgradeSection>
-                        )}
+                                return (
+                                    <UpgradeSection key={section.category}>
+                                        <CategoryTitle>{unlockUpgradeCategoryLabels[section.category]}</CategoryTitle>
 
-                        {hasAutoQueueCooldownUpgrade && (
-                            <UpgradeSection>
-                                <CategoryTitle>Auto queue cooldown</CategoryTitle>
+                                        <CategoryList>
+                                            {section.upgrades.map((upgrade) => {
+                                                return (
+                                                    <Upgrade
+                                                        key={upgrade.id}
+                                                        locked={locked}
+                                                        unlockUpgrade={upgrade}
+                                                    />
+                                                )
+                                            })}
+                                        </CategoryList>
+                                    </UpgradeSection>
+                                )
+                            })}
 
-                                <CategoryList>
-                                    <Upgrade
-                                        cost={getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel)}
-                                        description={`Level ${autoQueueCooldownLevel + 1}/${maxAutoQueueCooldownLevel + 1}. ${currentAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(currentAutoQueueCooldown.delayMs)}) -> ${nextAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(nextAutoQueueCooldown.delayMs)}).`}
-                                        locked={false}
-                                        name="Auto queue restart"
-                                        onPurchase={purchaseAutoQueueCooldownUpgrade}
-                                    />
-                                </CategoryList>
-                            </UpgradeSection>
-                        )}
-
-                        {upgradeSections.map((section) => {
-                            const locked = section.category !== unlockedUpgradeCategory
-
-                            return (
+                            {activeUpgradeKind === 'speed' && speedUpgradeSections.map((section) => (
                                 <UpgradeSection key={section.category}>
-                                    <CategoryTitle>{upgradeCategoryLabels[section.category]}</CategoryTitle>
+                                    <CategoryTitle>{speedUpgradeCategoryLabels[section.category]}</CategoryTitle>
 
                                     <CategoryList>
-                                        {section.upgrades.map((upgrade) => {
-                                            return (
-                                                <Upgrade
-                                                    key={upgrade.id}
-                                                    locked={locked}
-                                                    upgrade={upgrade}
-                                                />
-                                            )
-                                        })}
+                                        {section.upgrades.map((speedUpgrade) => (
+                                            <Upgrade
+                                                cost={speedUpgrade.cost}
+                                                description={speedUpgrade.description}
+                                                key={speedUpgrade.id}
+                                                locked={false}
+                                                name={speedUpgrade.name}
+                                                onPurchase={speedUpgrade.handlePurchase}
+                                            />
+                                        ))}
                                     </CategoryList>
                                 </UpgradeSection>
-                            )
-                        })}
-                    </UpgradesContainer>
+                            ))}
+                        </UpgradesContainer>
+                    </>
                 )
                 : <EmptyState>No upgrades available</EmptyState>}
         </UpgradesStyle>

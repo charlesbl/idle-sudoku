@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { type UpgradeModel } from '../model/upgrades/upgrade'
+import { type UnlockUpgradeModel } from '../model/upgrades/unlockUpgrade'
 import { useSudoku } from './hooks/sudoku.context'
 
 const UpgradeStyle = styled.div<{ $locked: boolean }>`
@@ -88,7 +88,7 @@ const CostButton = styled.button`
 
 interface UpgradeProps {
     locked: boolean
-    upgrade?: UpgradeModel
+    unlockUpgrade?: UnlockUpgradeModel
     name?: string
     description?: string
     cost?: number
@@ -96,10 +96,10 @@ interface UpgradeProps {
 }
 
 const Upgrade = (props: UpgradeProps): JSX.Element => {
-    const { money, purchaseUpgrade } = useSudoku()
-    const name = props.upgrade?.name ?? props.name ?? ''
-    const description = props.upgrade?.description ?? props.description ?? ''
-    const cost = props.upgrade?.cost ?? props.cost ?? 0
+    const { money, purchaseUnlockUpgrade } = useSudoku()
+    const name = props.unlockUpgrade?.name ?? props.name ?? ''
+    const description = props.unlockUpgrade?.description ?? props.description ?? ''
+    const cost = props.unlockUpgrade?.cost ?? props.cost ?? 0
     const unaffordable = money < cost
     const disabled = props.locked || unaffordable
     const title = props.locked
@@ -112,8 +112,8 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
             props.onPurchase()
             return
         }
-        if (props.upgrade !== undefined) {
-            purchaseUpgrade(props.upgrade)
+        if (props.unlockUpgrade !== undefined) {
+            purchaseUnlockUpgrade(props.unlockUpgrade)
         }
     }
 
