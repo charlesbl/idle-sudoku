@@ -3,7 +3,9 @@ import { maxPuzzleTransitionLevel, normalizePuzzleTransitionLevel } from '../../
 
 interface PuzzleTransitionHook {
     puzzleTransitionLevel: number
+    setPuzzleTransitionLevel: (level: number) => void
     upgradePuzzleTransition: () => void
+    resetPuzzleTransition: () => void
 }
 
 export const usePuzzleTransition = (): PuzzleTransitionHook => {
@@ -15,8 +17,14 @@ export const usePuzzleTransition = (): PuzzleTransitionHook => {
         setPuzzleTransitionLevel(puzzleTransitionLevel + 1)
     }
 
+    const resetPuzzleTransition = (): void => {
+        setPuzzleTransitionLevel(0)
+    }
+
     return {
         puzzleTransitionLevel,
-        upgradePuzzleTransition
+        setPuzzleTransitionLevel,
+        upgradePuzzleTransition,
+        resetPuzzleTransition
     }
 }

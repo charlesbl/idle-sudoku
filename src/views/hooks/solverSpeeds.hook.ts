@@ -9,6 +9,7 @@ interface SolverSpeedsHook {
     getSolverSpeedLevel: (solver: SudokuSolver) => number
     setSolverSpeedLevel: (solver: SudokuSolver, level: number) => void
     upgradeSolverSpeed: (solver: SudokuSolver) => void
+    resetSolverSpeeds: () => void
 }
 
 export const useSolverSpeeds = (): SolverSpeedsHook => {
@@ -30,10 +31,15 @@ export const useSolverSpeeds = (): SolverSpeedsHook => {
         setSolverSpeedLevel(solver, currentLevel + 1)
     }
 
+    const resetSolverSpeeds = (): void => {
+        setSolverSpeedLevels({})
+    }
+
     return {
         solverSpeedLevels,
         getSolverSpeedLevel,
         setSolverSpeedLevel,
-        upgradeSolverSpeed
+        upgradeSolverSpeed,
+        resetSolverSpeeds
     }
 }

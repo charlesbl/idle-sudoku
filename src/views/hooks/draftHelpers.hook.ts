@@ -4,6 +4,7 @@ import { allDraftHelpers, type DraftHelper } from '../../model/draftHelpers/draf
 interface DraftHelperHook {
     draftHelpers: DraftHelper[]
     addDraftHelper: (id: string) => void
+    setDraftHelpers: (helpers: DraftHelper[]) => void
 }
 
 export const useDraftHelpers = (): DraftHelperHook => {
@@ -17,9 +18,13 @@ export const useDraftHelpers = (): DraftHelperHook => {
     const draftHelpers = draftHelperIds
         .map(id => getDraftHelper(id))
         .filter((helper): helper is DraftHelper => helper !== undefined)
+    const setDraftHelpers = (helpers: DraftHelper[]): void => {
+        setDraftHelperIds(helpers.map(helper => helper.id))
+    }
 
     return {
         draftHelpers,
-        addDraftHelper
+        addDraftHelper,
+        setDraftHelpers
     }
 }

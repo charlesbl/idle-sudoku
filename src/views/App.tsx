@@ -2,12 +2,14 @@ import styled, { keyframes } from 'styled-components'
 import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
 import { useSudoku } from './hooks/sudoku.context'
+import { Tooltip, TooltipAnchor } from './Tooltip'
 import { cloneSudoku } from '../model/sudoku.model'
 import {
     getSolverSpeedDescription,
     getSolverSpeedLevel as getSolverSpeedLevelDetails
 } from '../model/solvers/solverSpeed'
 import { formatPuzzleTransitionDelay } from '../model/puzzleTransition'
+import { formatNumber } from '../utils/utils'
 
 // TODO add in right panel a button for each solver to activate it and pass only once, queue solvers if the first one is not finished.
 // TODO add selector for difficulty. more difficult = more money.
@@ -116,6 +118,14 @@ const InfoValue = styled.div<{ $accent?: boolean }>`
 
     @media (width <= 620px) {
         font-size: 1.1rem;
+    }
+`
+
+const GoalValue = styled(InfoValue)`
+    font-size: 1.05rem;
+
+    @media (width <= 620px) {
+        font-size: 0.95rem;
     }
 `
 
@@ -281,58 +291,7 @@ const DevActionBar = styled(ActionBar)`
     border-top: 1px dashed rgb(255 255 255 / 13%);
 `
 
-const Tooltip = styled.span`
-    position: absolute;
-    bottom: calc(100% + 0.55rem);
-    left: 50%;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.45rem 0.6rem;
-    border: 1px solid rgb(255 255 255 / 16%);
-    border-radius: 8px;
-    color: var(--text-strong);
-    font-size: 0.78rem;
-    font-weight: 750;
-    line-height: 1;
-    white-space: nowrap;
-    background: rgb(7 10 14 / 96%);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 36%);
-    opacity: 0;
-    pointer-events: none;
-    transform: translate(-50%, 0.2rem);
-    transition:
-        opacity 140ms ease,
-        visibility 140ms ease,
-        transform 140ms ease;
-    visibility: hidden;
 
-    kbd {
-        min-width: 1.6rem;
-        padding: 0.18rem 0.35rem;
-        border: 1px solid rgb(255 255 255 / 24%);
-        border-radius: 5px;
-        color: var(--accent-strong);
-        font: inherit;
-        font-size: 0.72rem;
-        font-weight: 900;
-        background: rgb(255 255 255 / 8%);
-        box-shadow: inset 0 -1px 0 rgb(0 0 0 / 35%);
-    }
-`
-
-const TooltipAnchor = styled.div`
-    position: relative;
-    display: inline-flex;
-
-    &:hover ${Tooltip},
-    &:focus-within ${Tooltip} {
-        opacity: 1;
-        transform: translate(-50%, 0);
-        visibility: visible;
-    }
-`
 
 const ActionButton = styled.button<{ $active?: boolean }>`
     min-height: 2.5rem;
@@ -357,6 +316,13 @@ const ActionButton = styled.button<{ $active?: boolean }>`
     &:focus-visible {
         outline: 2px solid var(--accent-strong);
         outline-offset: 2px;
+    }
+
+    &:disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.5;
+        transform: none;
     }
 
     &:hover:not(:disabled) {
@@ -705,9 +671,19 @@ const App = (): JSX.Element => {
         reset,
         money,
         addMoney,
+        difficultyTier,
+        prestigeLevel,
+        prestigePoints,
+        prestigeGoal,
+        manualVeryEasySolvedCount,
+        manualVeryEasySolvedGoal,
+        manualOpeningComplete,
+        canPrestige,
+        prestige,
         draftHelpers,
         setCurrentSolver,
         queueSolver,
+        runSolverManually,
         setAutoSolverActive,
         getSolverSpeedLevel,
         hasUpgradeFeature,
@@ -820,11 +796,47 @@ const App = (): JSX.Element => {
                         <InfoLabel>Credits</InfoLabel>
 
                         <InfoValue $accent>
-                            {money}
+                            {formatNumber(money)}
 
                             &euro;
                         </InfoValue>
                     </InfoCard>
+
+                    <InfoCard>
+                        <InfoLabel>Difficulty</InfoLabel>
+
+                        <InfoValue>
+                            {difficultyTier.label}
+                        </InfoValue>
+                    </InfoCard>
+
+                    <InfoCard>
+                        <InfoLabel>Prestige</InfoLabel>
+
+                        <InfoValue $accent={prestigePoints > 0}>
+                            {`${prestigeLevel} / ${formatNumber(prestigePoints)} PP`}
+                        </InfoValue>
+                    </InfoCard>
+
+                    <InfoCard>
+                        <InfoLabel>Prestige Goal</InfoLabel>
+
+                        <GoalValue $accent={canPrestige}>
+                            {`${formatNumber(money)} / ${formatNumber(prestigeGoal)}`}
+
+                            &euro;
+                        </GoalValue>
+                    </InfoCard>
+
+                    {!manualOpeningComplete && (
+                        <InfoCard>
+                            <InfoLabel>Manual start</InfoLabel>
+
+                            <InfoValue>
+                                {`${manualVeryEasySolvedCount}/${manualVeryEasySolvedGoal}`}
+                            </InfoValue>
+                        </InfoCard>
+                    )}
 
                     <InfoCard>
                         <InfoLabel>Solver</InfoLabel>
@@ -915,18 +927,51 @@ const App = (): JSX.Element => {
                         </Tooltip>
                     </TooltipAnchor>
 
-                    <ActionButton onClick={() => {
-                        reset()
-                    }}
-                    >
-                        New puzzle
-                    </ActionButton>
+                    <TooltipAnchor>
+                        <ActionButton onClick={() => {
+                            reset()
+                        }}
+                        >
+                            New puzzle
+                        </ActionButton>
+                        <Tooltip role="tooltip">
+                            Generate a new Sudoku grid
+                        </Tooltip>
+                    </TooltipAnchor>
 
-                    <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
+                    <TooltipAnchor>
+                        <ActionButton
+                            disabled={!canPrestige}
+                            onClick={() => { prestige() }}
+                        >
+                            Prestige +
+
+                            {formatNumber(difficultyTier.prestigeReward)}
+
+                            PP
+                        </ActionButton>
+                        <Tooltip role="tooltip">
+                            {canPrestige
+                                ? `Reset progress and earn ${formatNumber(difficultyTier.prestigeReward)} PP`
+                                : `Requires reaching ${formatNumber(prestigeGoal)} credits`}
+                        </Tooltip>
+                    </TooltipAnchor>
+
+                    <TooltipAnchor>
+                        <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
+                        <Tooltip role="tooltip">
+                            Reset all credits, upgrades, and prestige points
+                        </Tooltip>
+                    </TooltipAnchor>
                 </ActionBar>
 
                 <DevActionBar>
-                    <DevActionButton onClick={() => { addMoney(1000) }}>Give 1000</DevActionButton>
+                    <TooltipAnchor>
+                        <DevActionButton onClick={() => { addMoney(1000) }}>Give 1000</DevActionButton>
+                        <Tooltip role="tooltip">
+                            Developer Cheat: Add 1,000 credits
+                        </Tooltip>
+                    </TooltipAnchor>
                 </DevActionBar>
             </SudokuLayout>
 
@@ -966,14 +1011,19 @@ const App = (): JSX.Element => {
                                         </AutoQueueCooldownCircle>
                                     )}
 
-                                    <QueueAutoButton
-                                        $active={autoSolverQueueEnabled}
-                                        aria-pressed={autoSolverQueueEnabled}
-                                        onClick={() => { setAutoSolverQueueEnabled(!autoSolverQueueEnabled) }}
-                                        type="button"
-                                    >
-                                        {autoQueueLabel}
-                                    </QueueAutoButton>
+                                    <TooltipAnchor>
+                                        <QueueAutoButton
+                                            $active={autoSolverQueueEnabled}
+                                            aria-pressed={autoSolverQueueEnabled}
+                                            onClick={() => { setAutoSolverQueueEnabled(!autoSolverQueueEnabled) }}
+                                            type="button"
+                                        >
+                                            {autoQueueLabel}
+                                        </QueueAutoButton>
+                                        <Tooltip data-align="right" role="tooltip">
+                                            Automatically add selected solvers to queue when idle
+                                        </Tooltip>
+                                    </TooltipAnchor>
                                 </QueueControls>
                             )}
                         </QueueHeader>
@@ -1021,42 +1071,60 @@ const App = (): JSX.Element => {
                                         $active={solver.id === currentSolver?.id}
                                         key={solver.id}
                                     >
-                                        <SolverButton
-                                            disabled={!canQueueSolvers && currentSolver !== undefined}
-                                            onClick={() => {
-                                                if (canQueueSolvers) {
-                                                    queueSolver(solver)
-                                                    return
-                                                }
-                                                setCurrentSolver(solver)
-                                            }}
-                                        >
-                                            <SolverButtonText>
-                                                <SolverName>{solver.name}</SolverName>
-
-                                                <SolverSpeed>
-                                                    {speedDescription}
-                                                </SolverSpeed>
-                                            </SolverButtonText>
-
-                                            {queuedCount > 0 && (
-                                                <SolverQueueBadge>
-                                                    {queuedCount}
-                                                </SolverQueueBadge>
-                                            )}
-                                        </SolverButton>
-
-                                        {autoQueueSolvers && (
-                                            <AutoSolverToggle
-                                                $active={autoSolverActive}
-                                                aria-label={`${autoSolverActive ? 'Disable' : 'Enable'} ${solver.name} in auto queue`}
-                                                aria-pressed={autoSolverActive}
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    setAutoSolverActive(solver, !autoSolverActive)
+                                        <TooltipAnchor $flex>
+                                            <SolverButton
+                                                disabled={!canQueueSolvers && currentSolver !== undefined}
+                                                onClick={() => {
+                                                    if (canQueueSolvers) {
+                                                        if (autoQueueSolvers) {
+                                                            runSolverManually(solver)
+                                                            return
+                                                        }
+                                                        queueSolver(solver)
+                                                        return
+                                                    }
+                                                    setCurrentSolver(solver)
                                                 }}
-                                                type="button"
-                                            />
+                                            >
+                                                <SolverButtonText>
+                                                    <SolverName>{solver.name}</SolverName>
+
+                                                    <SolverSpeed>
+                                                        {speedDescription}
+                                                    </SolverSpeed>
+                                                </SolverButtonText>
+
+                                                {queuedCount > 0 && (
+                                                    <SolverQueueBadge>
+                                                        {queuedCount}
+                                                    </SolverQueueBadge>
+                                                )}
+                                            </SolverButton>
+                                            <Tooltip role="tooltip">
+                                                {canQueueSolvers
+                                                    ? (autoQueueSolvers ? 'Run solver immediately' : 'Add solver to queue')
+                                                    : 'Set as active solver'}
+                                            </Tooltip>
+                                        </TooltipAnchor>
+
+                                        {hasAutoQueueUpgrade && (
+                                            <TooltipAnchor>
+                                                <AutoSolverToggle
+                                                    $active={autoSolverActive}
+                                                    aria-label={`${autoSolverActive ? 'Disable' : 'Enable'} ${solver.name} in auto queue`}
+                                                    aria-pressed={autoSolverActive}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setAutoSolverActive(solver, !autoSolverActive)
+                                                    }}
+                                                    type="button"
+                                                />
+                                                <Tooltip data-align="right" role="tooltip">
+                                                    {autoSolverActive
+                                                        ? 'Disable solver in auto queue'
+                                                        : 'Enable solver in auto queue'}
+                                                </Tooltip>
+                                            </TooltipAnchor>
                                         )}
                                     </SolverRow>
                                 )

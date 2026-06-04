@@ -1,7 +1,7 @@
 import { getSudoku } from 'sudoku-gen'
-import { type Difficulty } from 'sudoku-gen/dist/types/difficulty.type'
+import { type GameDifficulty } from './difficulty'
 
-export type CustomDifficulty = Difficulty | 'very-easy'
+export type CustomDifficulty = GameDifficulty
 
 export interface TileModel {
     value: number | undefined

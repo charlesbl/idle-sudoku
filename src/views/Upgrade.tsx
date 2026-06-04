@@ -1,10 +1,13 @@
+import type React from 'react'
 import styled from 'styled-components'
 import { type UnlockUpgradeModel } from '../model/upgrades/unlockUpgrade'
 import { useSudoku } from './hooks/sudoku.context'
+import { Tooltip, TooltipAnchor } from './Tooltip'
+import { formatNumber } from '../utils/utils'
+import { getSolverTotalSpeedUpgradeSpent } from '../model/solvers/solverSpeed'
 
 const UpgradeStyle = styled.div<{ $locked: boolean }>`
     flex: 0 0 auto;
-    overflow: hidden;
     border: 1px solid ${props => props.$locked ? 'rgb(255 255 255 / 7%)' : 'rgb(255 255 255 / 11%)'};
     border-radius: 8px;
     opacity: ${props => props.$locked ? 0.48 : 1};
@@ -44,6 +47,8 @@ const Cost = styled.div`
     gap: 0.5rem;
     padding: 0.7rem 0.85rem;
     border-top: 1px solid rgb(255 255 255 / 9%);
+    border-bottom-left-radius: 7px;
+    border-bottom-right-radius: 7px;
     color: #9aa5b6;
     font-size: 0.9rem;
     font-weight: 800;
@@ -92,24 +97,41 @@ interface UpgradeProps {
     name?: string
     description?: string
     cost?: number
-    onPurchase?: () => void
+    onPurchase?: (buyMax?: boolean) => void
+    availableAmount?: number
+    currencyLabel?: string
 }
 
 const Upgrade = (props: UpgradeProps): JSX.Element => {
-    const { money, purchaseUnlockUpgrade } = useSudoku()
+    const { money, purchaseUnlockUpgrade, getSolverSpeedLevel } = useSudoku()
     const name = props.unlockUpgrade?.name ?? props.name ?? ''
     const description = props.unlockUpgrade?.description ?? props.description ?? ''
     const cost = props.unlockUpgrade?.cost ?? props.cost ?? 0
-    const unaffordable = money < cost
+    const availableAmount = props.availableAmount ?? money
+    const currencyLabel = props.currencyLabel ?? ''
+    const unaffordable = availableAmount < cost
     const disabled = props.locked || unaffordable
-    const title = props.locked
-        ? 'Finish the previous category first'
-        : unaffordable ? 'Not enough credits' : undefined
 
-    const handlePurchase = (): void => {
+    const unlockUpgrade = props.unlockUpgrade
+    let refundAmount = 0
+    if (unlockUpgrade?.solver?.replaces !== undefined) {
+        refundAmount = unlockUpgrade.solver.replaces.reduce((sum, replacedSolver) => {
+            const level = getSolverSpeedLevel(replacedSolver)
+            return sum + getSolverTotalSpeedUpgradeSpent(level)
+        }, 0)
+    }
+
+    const tooltipText = props.locked
+        ? 'Finish the previous category first'
+        : unaffordable
+            ? (props.currencyLabel === 'PP' ? 'Not enough PP' : `Not enough credits${refundAmount > 0 ? ` (Refunds ${formatNumber(refundAmount)} credits)` : ''}`)
+            : `Purchase upgrade${refundAmount > 0 ? ` (Refunds ${formatNumber(refundAmount)} credits)` : ''}`
+
+    const handlePurchase = (event: React.MouseEvent<HTMLButtonElement>): void => {
         if (disabled) return
+        const buyMax = event.shiftKey
         if (props.onPurchase !== undefined) {
-            props.onPurchase()
+            props.onPurchase(buyMax)
             return
         }
         if (props.unlockUpgrade !== undefined) {
@@ -130,13 +152,23 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
             <Cost>
                 Buy
 
-                <CostButton
-                    disabled={disabled}
-                    onClick={handlePurchase}
-                    title={title}
-                >
-                    {cost}
-                </CostButton>
+                {currencyLabel}
+
+                <TooltipAnchor>
+                    <CostButton
+                        disabled={disabled}
+                        onClick={handlePurchase}
+                    >
+                        {formatNumber(cost)}
+                    </CostButton>
+
+                    <Tooltip
+                        data-align="right"
+                        role="tooltip"
+                    >
+                        {tooltipText}
+                    </Tooltip>
+                </TooltipAnchor>
             </Cost>
         </UpgradeStyle>
     )

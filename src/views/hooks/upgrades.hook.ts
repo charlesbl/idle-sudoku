@@ -5,6 +5,7 @@ interface UpgradeHook {
     unlockUpgrades: UnlockUpgradeModel[]
     upgradeFeatures: UpgradeFeature[]
     setUnlockUpgrades: (upgrades: UnlockUpgradeModel[]) => void
+    setUpgradeFeatures: (features: UpgradeFeature[]) => void
     unlockUpgradeFeature: (feature: UpgradeFeature) => void
 }
 
@@ -12,10 +13,7 @@ export const useUpgrades = (): UpgradeHook => {
     const [unlockUpgradeIds, setUnlockUpgradeIds] = useLocalStorageState<string[]>('upgradeIds', { defaultValue: allUnlockUpgrades.map(upgrade => upgrade.id) })
     const [upgradeFeatures, setUpgradeFeatures] = useLocalStorageState<UpgradeFeature[]>('upgradeFeatures', { defaultValue: [] })
 
-    const unlockUpgrades = allUnlockUpgrades.filter(upgrade => {
-        const featureNotUnlocked = upgrade.feature !== undefined && !upgradeFeatures.includes(upgrade.feature)
-        return unlockUpgradeIds.includes(upgrade.id) || featureNotUnlocked
-    })
+    const unlockUpgrades = allUnlockUpgrades.filter(upgrade => unlockUpgradeIds.includes(upgrade.id))
     const setUnlockUpgrades = (upgrades: UnlockUpgradeModel[]): void => { setUnlockUpgradeIds(upgrades.map(upgrade => upgrade.id)) }
     const unlockUpgradeFeature = (feature: UpgradeFeature): void => {
         if (upgradeFeatures.includes(feature)) return
@@ -26,6 +24,7 @@ export const useUpgrades = (): UpgradeHook => {
         unlockUpgrades,
         upgradeFeatures,
         setUnlockUpgrades,
+        setUpgradeFeatures,
         unlockUpgradeFeature
     }
 }

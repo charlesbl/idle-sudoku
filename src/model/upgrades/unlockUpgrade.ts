@@ -1,7 +1,9 @@
 import { blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../draftHelpers/draftHelpers'
+import { type GameDifficulty, isDifficultyAtLeast } from '../difficulty'
 import { findSingleDraftsSolver, onlyDraftInCellSolver, singleDraftInBlockSolver, singleDraftInColumnSolver, singleDraftInRowSolver } from '../solvers/lastDraft'
-import { clearImpossibleDraftsSolver } from '../solvers/removeDrafts'
-import { calculateValidDraftsSolver } from '../solvers/setDrafts'
+import { clearBlockDraftsSolver, clearColumnDraftsSolver, clearImpossibleDraftsSolver, clearRowDraftsSolver } from '../solvers/removeDrafts'
+import { calculateValidDraftsSolver, fillCellsWithDraftsSolver } from '../solvers/setDrafts'
+import { solutionAssistSolver } from '../solvers/solutionAssist'
 import { type SudokuSolver } from '../solvers/sudokuSolver'
 
 export interface UnlockUpgradeModel {
@@ -13,11 +15,13 @@ export interface UnlockUpgradeModel {
     description: string
     solver?: SudokuSolver
     draftHelper?: DraftHelper
+    draftHelpers?: DraftHelper[]
     feature?: UpgradeFeature
 }
 
 export type UnlockUpgradeCategory =
     | 'draftHelpers'
+    | 'basicSolvers'
     | 'singleDrafts'
     | 'solverQueue'
     | 'draftCleanup'
@@ -37,6 +41,7 @@ export type UpgradeFeature =
 
 export const unlockUpgradeCategoryOrder: UnlockUpgradeCategory[] = [
     'draftHelpers',
+    'basicSolvers',
     'singleDrafts',
     'solverQueue',
     'draftCleanup',
@@ -49,6 +54,7 @@ export const unlockUpgradeCategoryOrder: UnlockUpgradeCategory[] = [
 
 export const unlockUpgradeCategoryLabels: Record<UnlockUpgradeCategory, string> = {
     draftHelpers: 'Draft helpers',
+    basicSolvers: 'Basic solvers',
     singleDrafts: 'Single drafts',
     solverQueue: 'Solver queue',
     draftCleanup: 'Draft cleanup',
@@ -57,6 +63,16 @@ export const unlockUpgradeCategoryLabels: Record<UnlockUpgradeCategory, string> 
     advancedSingles: 'Advanced singles',
     solverAutomation: 'Automation',
     automaticHelpers: 'Automatic helpers'
+}
+
+export const unlockUpgradeCategoryMinimumDifficulty: Partial<Record<UnlockUpgradeCategory, GameDifficulty>> = {}
+
+export const isUnlockUpgradeCategoryAvailable = (
+    category: UnlockUpgradeCategory,
+    difficulty: GameDifficulty
+): boolean => {
+    const minimumDifficulty = unlockUpgradeCategoryMinimumDifficulty[category]
+    return minimumDifficulty === undefined || isDifficultyAtLeast(difficulty, minimumDifficulty)
 }
 
 export const getCurrentUnlockUpgradeCategory = (upgrades: UnlockUpgradeModel[]): UnlockUpgradeCategory | undefined => {
@@ -77,6 +93,16 @@ const createSolverUnlockUpgrade = (
     description,
     solver
 })
+
+export const draftHelpersPermanentUpgrade: UnlockUpgradeModel = {
+    kind: 'unlock',
+    id: 'draft-helpers-upgrade',
+    name: 'Draft helpers',
+    category: 'draftHelpers',
+    cost: 4,
+    description: 'When you place a number, remove its draft from the other cells in the row, column, and block.',
+    draftHelpers: [rowDraftHelper, columnDraftHelper, blockDraftHelper]
+}
 
 export const allUnlockUpgrades: UnlockUpgradeModel[] = [
     {
@@ -106,10 +132,15 @@ export const allUnlockUpgrades: UnlockUpgradeModel[] = [
         description: 'When you place a number, remove its draft from the other cells in the block.',
         draftHelper: blockDraftHelper
     },
+    createSolverUnlockUpgrade(fillCellsWithDraftsSolver, 'basicSolvers', 'Fill every empty cell with all drafts.', 6),
+    createSolverUnlockUpgrade(clearRowDraftsSolver, 'basicSolvers', 'Remove drafts that already appear in the row.', 7),
+    createSolverUnlockUpgrade(clearColumnDraftsSolver, 'basicSolvers', 'Remove drafts that already appear in the column.', 7),
+    createSolverUnlockUpgrade(clearBlockDraftsSolver, 'basicSolvers', 'Remove drafts that already appear in the block.', 7),
     createSolverUnlockUpgrade(singleDraftInRowSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the row.', 10),
     createSolverUnlockUpgrade(singleDraftInColumnSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the column.', 10),
     createSolverUnlockUpgrade(singleDraftInBlockSolver, 'singleDrafts', 'Place a number when its draft appears in only one cell of the block.', 10),
     createSolverUnlockUpgrade(onlyDraftInCellSolver, 'singleDrafts', 'Place a number when a cell has only one draft left.', 12),
+    createSolverUnlockUpgrade(solutionAssistSolver, 'singleDrafts', 'Each scanned empty cell has a small chance to receive its correct solution value.', 15),
     {
         kind: 'unlock',
         id: 'solver-queue-upgrade',

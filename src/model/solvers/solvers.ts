@@ -1,14 +1,10 @@
 import { findSingleDraftsSolver, onlyDraftInCellSolver, singleDraftInBlockSolver, singleDraftInColumnSolver, singleDraftInRowSolver } from './lastDraft'
 import { clearBlockDraftsSolver, clearColumnDraftsSolver, clearImpossibleDraftsSolver, clearRowDraftsSolver } from './removeDrafts'
 import { calculateValidDraftsSolver, fillCellsWithDraftsSolver } from './setDrafts'
+import { solutionAssistSolver } from './solutionAssist'
 import { type SudokuSolver } from './sudokuSolver'
 
-export const defaultSolvers: SudokuSolver[] = [
-    fillCellsWithDraftsSolver,
-    clearRowDraftsSolver,
-    clearColumnDraftsSolver,
-    clearBlockDraftsSolver
-]
+export const defaultSolvers: SudokuSolver[] = []
 
 export const allSolvers: SudokuSolver[] = [
     fillCellsWithDraftsSolver,
@@ -21,5 +17,6 @@ export const allSolvers: SudokuSolver[] = [
     singleDraftInColumnSolver,
     singleDraftInBlockSolver,
     onlyDraftInCellSolver,
-    findSingleDraftsSolver
+    findSingleDraftsSolver,
+    solutionAssistSolver
 ]

@@ -44,6 +44,18 @@ export const getSolverSpeedUpgradeCost = (currentLevel: number): number => {
     return solverSpeedUpgradeCosts[normalizeSolverSpeedLevel(currentLevel)] ?? Infinity
 }
 
+export const getSolverTotalSpeedUpgradeSpent = (level: number): number => {
+    let total = 0
+    const normalizedLevel = normalizeSolverSpeedLevel(level)
+    for (let i = 0; i < normalizedLevel; i++) {
+        const cost = getSolverSpeedUpgradeCost(i)
+        if (cost !== Infinity) {
+            total += cost
+        }
+    }
+    return total
+}
+
 export const getSolverSpeedDescription = (speedLevel: SolverSpeedLevel): string => {
     const tileLabel = speedLevel.tilesPerTick === 1 ? 'tile' : 'tiles'
     return `${speedLevel.tileTimeMs} ms/tick, ${speedLevel.tilesPerTick} ${tileLabel}/tick`

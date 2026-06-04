@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
 import { useSudoku } from './hooks/sudoku.context'
+import { Tooltip, TooltipAnchor } from './Tooltip'
 import { type UpgradeKind, upgradeKindLabels } from '../model/upgrades/upgrade'
 import {
     getCurrentUnlockUpgradeCategory,
@@ -30,9 +31,15 @@ import {
     getAutoQueueCooldownUpgradeCost,
     maxAutoQueueCooldownLevel
 } from '../model/autoQueueCooldown'
+import { solutionAssistSolver } from '../model/solvers/solutionAssist'
+import {
+    getSolutionAssistChanceLevel,
+    getSolutionAssistChanceUpgradeCost,
+    maxSolutionAssistChanceLevel
+} from '../model/solvers/solutionAssistChance'
 
 interface PurchasableSpeedUpgrade extends SpeedUpgradeModel {
-    handlePurchase: () => void
+    handlePurchase: (buyMax?: boolean) => void
 }
 
 const UpgradesStyle = styled.aside`
@@ -75,7 +82,7 @@ const Title = styled.div`
 
 const TabList = styled.div`
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.35rem;
     margin-bottom: 0.9rem;
     padding: 0.25rem;
@@ -114,6 +121,15 @@ const TabButton = styled.button<{ $active: boolean }>`
         border-color: rgb(81 214 194 / 42%);
         color: var(--accent-strong);
         background: rgb(81 214 194 / 9%);
+    }
+`
+
+const TabTooltipAnchor = styled(TooltipAnchor)`
+    display: flex;
+    width: 100%;
+
+    button {
+        width: 100%;
     }
 `
 
@@ -158,6 +174,7 @@ const EmptyState = styled.div`
 const Upgrades = (): JSX.Element => {
     const {
         unlockUpgrades,
+        permanentUpgrades,
         solvers,
         getSolverSpeedLevel,
         hasUpgradeFeature,
@@ -165,22 +182,57 @@ const Upgrades = (): JSX.Element => {
         puzzleTransitionLevel,
         purchasePuzzleTransitionUpgrade,
         autoQueueCooldownLevel,
-        purchaseAutoQueueCooldownUpgrade
+        purchaseAutoQueueCooldownUpgrade,
+        solutionAssistChanceLevel,
+        purchaseSolutionAssistChanceUpgrade,
+        prestigePoints,
+        purchasePermanentUpgrade,
+        isShiftPressed,
+        money
     } = useSudoku()
     const [selectedUpgradeKind, setSelectedUpgradeKind] = useState<UpgradeKind>('unlock')
     const currentUnlockUpgradeCategory = getCurrentUnlockUpgradeCategory(unlockUpgrades)
+    const currentPermanentUpgradeCategory = getCurrentUnlockUpgradeCategory(permanentUpgrades)
     const unlockUpgradeSections = unlockUpgradeCategoryOrder
         .map(category => ({
             category,
             upgrades: unlockUpgrades.filter(upgrade => upgrade.category === category)
         }))
         .filter(section => section.upgrades.length > 0)
+    const permanentUpgradeSections = unlockUpgradeCategoryOrder
+        .map(category => ({
+            category,
+            upgrades: permanentUpgrades.filter(upgrade => upgrade.category === category)
+        }))
+        .filter(section => section.upgrades.length > 0)
     const solverSpeedUpgrades: PurchasableSpeedUpgrade[] = solvers
         .map((solver) => {
             const currentLevel = getSolverSpeedLevel(solver)
-            const nextLevel = currentLevel + 1
             const currentSpeed = getSolverSpeedLevelDetails(currentLevel)
+
+            let buyMaxCost = 0
+            let buyMaxLevelCount = 0
+            let tempLevel = currentLevel
+            while (tempLevel < maxSolverSpeedLevel) {
+                const cost = getSolverSpeedUpgradeCost(tempLevel)
+                if (buyMaxCost + cost <= money) {
+                    buyMaxCost += cost
+                    buyMaxLevelCount++
+                    tempLevel++
+                } else {
+                    break
+                }
+            }
+
+            const isBuyMaxActive = isShiftPressed && buyMaxLevelCount > 0
+            const displayedCost = isBuyMaxActive ? buyMaxCost : getSolverSpeedUpgradeCost(currentLevel)
+
+            const nextLevel = currentLevel + (isBuyMaxActive ? buyMaxLevelCount : 1)
             const nextSpeed = getSolverSpeedLevelDetails(nextLevel)
+
+            const description = isBuyMaxActive
+                ? `Buy ${buyMaxLevelCount} levels. Level ${currentLevel + 1} -> ${nextLevel}/${maxSolverSpeedLevel + 1}. Speed: ${currentSpeed.label} -> ${nextSpeed.label}.`
+                : `Level ${currentLevel + 1}/${maxSolverSpeedLevel + 1}. ${currentSpeed.label} (${getSolverSpeedDescription(currentSpeed)}) -> ${nextSpeed.label} (${getSolverSpeedDescription(nextSpeed)}).`
 
             return {
                 kind: 'speed' as const,
@@ -191,27 +243,94 @@ const Upgrades = (): JSX.Element => {
                 currentLevel,
                 currentSpeed,
                 nextSpeed,
-                cost: getSolverSpeedUpgradeCost(currentLevel),
-                description: `Level ${currentLevel + 1}/${maxSolverSpeedLevel + 1}. ${currentSpeed.label} (${getSolverSpeedDescription(currentSpeed)}) -> ${nextSpeed.label} (${getSolverSpeedDescription(nextSpeed)}).`,
-                handlePurchase: () => { purchaseSolverSpeedUpgrade(solver) }
+                cost: displayedCost,
+                description,
+                handlePurchase: (buyMax?: boolean) => { purchaseSolverSpeedUpgrade(solver, buyMax) }
             }
         })
         .filter(speedUpgrade => speedUpgrade.currentLevel < maxSolverSpeedLevel)
     const currentPuzzleTransition = getPuzzleTransitionLevel(puzzleTransitionLevel)
-    const nextPuzzleTransition = getPuzzleTransitionLevel(puzzleTransitionLevel + 1)
     const hasPuzzleTransitionUpgrade = puzzleTransitionLevel < maxPuzzleTransitionLevel
+
+    let puzzleTransitionBuyMaxCost = 0
+    let puzzleTransitionBuyMaxLevelCount = 0
+    let tempPTLevel = puzzleTransitionLevel
+    while (tempPTLevel < maxPuzzleTransitionLevel) {
+        const cost = getPuzzleTransitionUpgradeCost(tempPTLevel)
+        if (puzzleTransitionBuyMaxCost + cost <= money) {
+            puzzleTransitionBuyMaxCost += cost
+            puzzleTransitionBuyMaxLevelCount++
+            tempPTLevel++
+        } else {
+            break
+        }
+    }
+    const isPTBuyMaxActive = isShiftPressed && puzzleTransitionBuyMaxLevelCount > 0
+    const displayedPTCost = isPTBuyMaxActive ? puzzleTransitionBuyMaxCost : getPuzzleTransitionUpgradeCost(puzzleTransitionLevel)
+    const ptNextLevel = puzzleTransitionLevel + (isPTBuyMaxActive ? puzzleTransitionBuyMaxLevelCount : 1)
+    const nextPuzzleTransition = getPuzzleTransitionLevel(ptNextLevel)
+    const ptDescription = isPTBuyMaxActive
+        ? `Buy ${puzzleTransitionBuyMaxLevelCount} levels. Level ${puzzleTransitionLevel + 1} -> ${ptNextLevel}/${maxPuzzleTransitionLevel + 1}. Delay: ${formatPuzzleTransitionDelay(currentPuzzleTransition.delayMs)} -> ${formatPuzzleTransitionDelay(nextPuzzleTransition.delayMs)}.`
+        : `Level ${puzzleTransitionLevel + 1}/${maxPuzzleTransitionLevel + 1}. ${currentPuzzleTransition.label} (${formatPuzzleTransitionDelay(currentPuzzleTransition.delayMs)}) -> ${nextPuzzleTransition.label} (${formatPuzzleTransitionDelay(nextPuzzleTransition.delayMs)}).`
+
     const currentAutoQueueCooldown = getAutoQueueCooldownLevel(autoQueueCooldownLevel)
-    const nextAutoQueueCooldown = getAutoQueueCooldownLevel(autoQueueCooldownLevel + 1)
     const hasAutoQueueCooldownUpgrade = hasUpgradeFeature('autoSolverQueue') &&
         autoQueueCooldownLevel < maxAutoQueueCooldownLevel
+
+    let autoQueueBuyMaxCost = 0
+    let autoQueueBuyMaxLevelCount = 0
+    let tempAQLevel = autoQueueCooldownLevel
+    while (tempAQLevel < maxAutoQueueCooldownLevel) {
+        const cost = getAutoQueueCooldownUpgradeCost(tempAQLevel)
+        if (autoQueueBuyMaxCost + cost <= money) {
+            autoQueueBuyMaxCost += cost
+            autoQueueBuyMaxLevelCount++
+            tempAQLevel++
+        } else {
+            break
+        }
+    }
+    const isAQBuyMaxActive = isShiftPressed && autoQueueBuyMaxLevelCount > 0
+    const displayedAQCost = isAQBuyMaxActive ? autoQueueBuyMaxCost : getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel)
+    const aqNextLevel = autoQueueCooldownLevel + (isAQBuyMaxActive ? autoQueueBuyMaxLevelCount : 1)
+    const nextAutoQueueCooldown = getAutoQueueCooldownLevel(aqNextLevel)
+    const aqDescription = isAQBuyMaxActive
+        ? `Buy ${autoQueueBuyMaxLevelCount} levels. Level ${autoQueueCooldownLevel + 1} -> ${aqNextLevel}/${maxAutoQueueCooldownLevel + 1}. Cooldown: ${formatPuzzleTransitionDelay(currentAutoQueueCooldown.delayMs)} -> ${formatPuzzleTransitionDelay(nextAutoQueueCooldown.delayMs)}.`
+        : `Level ${autoQueueCooldownLevel + 1}/${maxAutoQueueCooldownLevel + 1}. ${currentAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(currentAutoQueueCooldown.delayMs)}) -> ${nextAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(nextAutoQueueCooldown.delayMs)}).`
+
+    const currentSolutionAssistChance = getSolutionAssistChanceLevel(solutionAssistChanceLevel)
+    const hasSolutionAssistUpgrade = solvers.some(solver => solver.id === solutionAssistSolver.id) &&
+        solutionAssistChanceLevel < maxSolutionAssistChanceLevel
+
+    let solutionAssistBuyMaxCost = 0
+    let solutionAssistBuyMaxLevelCount = 0
+    let tempSALevel = solutionAssistChanceLevel
+    while (tempSALevel < maxSolutionAssistChanceLevel) {
+        const cost = getSolutionAssistChanceUpgradeCost(tempSALevel)
+        if (solutionAssistBuyMaxCost + cost <= money) {
+            solutionAssistBuyMaxCost += cost
+            solutionAssistBuyMaxLevelCount++
+            tempSALevel++
+        } else {
+            break
+        }
+    }
+    const isSABuyMaxActive = isShiftPressed && solutionAssistBuyMaxLevelCount > 0
+    const displayedSACost = isSABuyMaxActive ? solutionAssistBuyMaxCost : getSolutionAssistChanceUpgradeCost(solutionAssistChanceLevel)
+    const saNextLevel = solutionAssistChanceLevel + (isSABuyMaxActive ? solutionAssistBuyMaxLevelCount : 1)
+    const nextSolutionAssistChance = getSolutionAssistChanceLevel(saNextLevel)
+    const saDescription = isSABuyMaxActive
+        ? `Buy ${solutionAssistBuyMaxLevelCount} levels. Level ${solutionAssistChanceLevel + 1} -> ${saNextLevel}/${maxSolutionAssistChanceLevel + 1}. Chance: ${currentSolutionAssistChance.chancePercent}% -> ${nextSolutionAssistChance.chancePercent}%.`
+        : `Level ${solutionAssistChanceLevel + 1}/${maxSolutionAssistChanceLevel + 1}. ${currentSolutionAssistChance.label} (${currentSolutionAssistChance.chancePercent}%) -> ${nextSolutionAssistChance.label} (${nextSolutionAssistChance.chancePercent}%).`
+
     const gridTimingSpeedUpgrade: PurchasableSpeedUpgrade | undefined = hasPuzzleTransitionUpgrade
         ? {
             kind: 'speed',
             id: `puzzle-transition-${puzzleTransitionLevel + 1}`,
             name: 'New grid timing',
             category: 'gridTiming',
-            cost: getPuzzleTransitionUpgradeCost(puzzleTransitionLevel),
-            description: `Level ${puzzleTransitionLevel + 1}/${maxPuzzleTransitionLevel + 1}. ${currentPuzzleTransition.label} (${formatPuzzleTransitionDelay(currentPuzzleTransition.delayMs)}) -> ${nextPuzzleTransition.label} (${formatPuzzleTransitionDelay(nextPuzzleTransition.delayMs)}).`,
+            cost: displayedPTCost,
+            description: ptDescription,
             handlePurchase: purchasePuzzleTransitionUpgrade
         }
         : undefined
@@ -221,15 +340,27 @@ const Upgrades = (): JSX.Element => {
             id: `auto-queue-cooldown-${autoQueueCooldownLevel + 1}`,
             name: 'Auto queue restart',
             category: 'autoQueueCooldown',
-            cost: getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel),
-            description: `Level ${autoQueueCooldownLevel + 1}/${maxAutoQueueCooldownLevel + 1}. ${currentAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(currentAutoQueueCooldown.delayMs)}) -> ${nextAutoQueueCooldown.label} (${formatPuzzleTransitionDelay(nextAutoQueueCooldown.delayMs)}).`,
+            cost: displayedAQCost,
+            description: aqDescription,
             handlePurchase: purchaseAutoQueueCooldownUpgrade
+        }
+        : undefined
+    const solutionAssistSpeedUpgrade: PurchasableSpeedUpgrade | undefined = hasSolutionAssistUpgrade
+        ? {
+            kind: 'speed',
+            id: `solution-assist-chance-${solutionAssistChanceLevel + 1}`,
+            name: 'Lucky solution chance',
+            category: 'solutionAssist',
+            cost: displayedSACost,
+            description: saDescription,
+            handlePurchase: purchaseSolutionAssistChanceUpgrade
         }
         : undefined
     const speedUpgrades = [
         ...solverSpeedUpgrades,
         ...(gridTimingSpeedUpgrade !== undefined ? [gridTimingSpeedUpgrade] : []),
-        ...(autoQueueCooldownSpeedUpgrade !== undefined ? [autoQueueCooldownSpeedUpgrade] : [])
+        ...(autoQueueCooldownSpeedUpgrade !== undefined ? [autoQueueCooldownSpeedUpgrade] : []),
+        ...(solutionAssistSpeedUpgrade !== undefined ? [solutionAssistSpeedUpgrade] : [])
     ]
     const speedUpgradeSections = speedUpgradeCategoryOrder
         .map(category => ({
@@ -239,12 +370,16 @@ const Upgrades = (): JSX.Element => {
         .filter(section => section.upgrades.length > 0)
     const hasUnlockUpgrades = unlockUpgrades.length > 0
     const hasSpeedUpgrades = speedUpgrades.length > 0
-    const hasAvailableUpgrades = hasUnlockUpgrades || hasSpeedUpgrades
-    const activeUpgradeKind = selectedUpgradeKind === 'unlock' && !hasUnlockUpgrades && hasSpeedUpgrades
-        ? 'speed'
-        : selectedUpgradeKind === 'speed' && !hasSpeedUpgrades && hasUnlockUpgrades
-            ? 'unlock'
-            : selectedUpgradeKind
+    const hasPermanentUpgrades = permanentUpgrades.length > 0
+    const hasAvailableUpgrades = hasUnlockUpgrades || hasSpeedUpgrades || hasPermanentUpgrades
+    const availableUpgradeKinds: UpgradeKind[] = [
+        ...(hasUnlockUpgrades ? ['unlock' as const] : []),
+        ...(hasSpeedUpgrades ? ['speed' as const] : []),
+        ...(hasPermanentUpgrades ? ['permanent' as const] : [])
+    ]
+    const activeUpgradeKind = availableUpgradeKinds.includes(selectedUpgradeKind)
+        ? selectedUpgradeKind
+        : availableUpgradeKinds[0] ?? selectedUpgradeKind
 
     return (
         <UpgradesStyle>
@@ -257,27 +392,53 @@ const Upgrades = (): JSX.Element => {
                             aria-label="Upgrade type"
                             role="tablist"
                         >
-                            <TabButton
-                                $active={activeUpgradeKind === 'unlock'}
-                                aria-selected={activeUpgradeKind === 'unlock'}
-                                disabled={!hasUnlockUpgrades}
-                                onClick={() => { setSelectedUpgradeKind('unlock') }}
-                                role="tab"
-                                type="button"
-                            >
-                                {upgradeKindLabels.unlock}
-                            </TabButton>
+                            <TabTooltipAnchor>
+                                <TabButton
+                                    $active={activeUpgradeKind === 'unlock'}
+                                    aria-selected={activeUpgradeKind === 'unlock'}
+                                    disabled={!hasUnlockUpgrades}
+                                    onClick={() => { setSelectedUpgradeKind('unlock') }}
+                                    role="tab"
+                                    type="button"
+                                >
+                                    {upgradeKindLabels.unlock}
+                                </TabButton>
+                                <Tooltip data-align="left" role="tooltip">
+                                    Show upgrades to unlock new solvers and mechanics
+                                </Tooltip>
+                            </TabTooltipAnchor>
 
-                            <TabButton
-                                $active={activeUpgradeKind === 'speed'}
-                                aria-selected={activeUpgradeKind === 'speed'}
-                                disabled={!hasSpeedUpgrades}
-                                onClick={() => { setSelectedUpgradeKind('speed') }}
-                                role="tab"
-                                type="button"
-                            >
-                                {upgradeKindLabels.speed}
-                            </TabButton>
+                            <TabTooltipAnchor>
+                                <TabButton
+                                    $active={activeUpgradeKind === 'speed'}
+                                    aria-selected={activeUpgradeKind === 'speed'}
+                                    disabled={!hasSpeedUpgrades}
+                                    onClick={() => { setSelectedUpgradeKind('speed') }}
+                                    role="tab"
+                                    type="button"
+                                >
+                                    {upgradeKindLabels.speed}
+                                </TabButton>
+                                <Tooltip role="tooltip">
+                                    Show upgrades to increase solver speed and grid transition speed
+                                </Tooltip>
+                            </TabTooltipAnchor>
+
+                            <TabTooltipAnchor>
+                                <TabButton
+                                    $active={activeUpgradeKind === 'permanent'}
+                                    aria-selected={activeUpgradeKind === 'permanent'}
+                                    disabled={!hasPermanentUpgrades}
+                                    onClick={() => { setSelectedUpgradeKind('permanent') }}
+                                    role="tab"
+                                    type="button"
+                                >
+                                    {upgradeKindLabels.permanent}
+                                </TabButton>
+                                <Tooltip data-align="right" role="tooltip">
+                                    Show permanent PP upgrades
+                                </Tooltip>
+                            </TabTooltipAnchor>
                         </TabList>
 
                         <UpgradesContainer>
@@ -321,6 +482,33 @@ const Upgrades = (): JSX.Element => {
                                     </CategoryList>
                                 </UpgradeSection>
                             ))}
+
+                            {activeUpgradeKind === 'permanent' && permanentUpgradeSections.map((section) => {
+                                const locked = section.category !== currentPermanentUpgradeCategory
+
+                                return (
+                                    <UpgradeSection key={section.category}>
+                                        <CategoryTitle>{unlockUpgradeCategoryLabels[section.category]}</CategoryTitle>
+
+                                        <CategoryList>
+                                            {section.upgrades.map((upgrade) => {
+                                                return (
+                                                    <Upgrade
+                                                        availableAmount={prestigePoints}
+                                                        cost={upgrade.permanentCost}
+                                                        currencyLabel="PP"
+                                                        description={`Permanent. ${upgrade.description}`}
+                                                        key={upgrade.id}
+                                                        locked={locked}
+                                                        name={upgrade.name}
+                                                        onPurchase={() => { purchasePermanentUpgrade(upgrade) }}
+                                                    />
+                                                )
+                                            })}
+                                        </CategoryList>
+                                    </UpgradeSection>
+                                )
+                            })}
                         </UpgradesContainer>
                     </>
                 )

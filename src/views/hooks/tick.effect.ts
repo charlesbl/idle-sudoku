@@ -3,7 +3,6 @@ import { type SudokuContextModel } from './sudoku.context'
 import { runSolverStep } from '../../model/solvers/solver'
 import { cloneSudoku } from '../../model/sudoku.model'
 import { getSolverSpeedLevel as getSolverSpeedLevelDetails } from '../../model/solvers/solverSpeed'
-import { PUZZLE_COMPLETE_BONUS } from './money.hook'
 
 const SOLVER_IDLE_TICK_TIME = 80
 
@@ -24,13 +23,14 @@ export const useTick = ({
     upgradeFeatures,
     autoSolverQueueEnabled,
     solverDraftHelpers,
-    addMoney,
     solverSpeedLevels,
     getSolverSpeedLevel,
     puzzleTransitionDelayMs,
     autoSolverCooldownUntil,
     setAutoSolverCooldownUntil,
-    autoQueueCooldownDelayMs
+    autoQueueCooldownDelayMs,
+    solutionAssistChancePercent,
+    completeSolvedPuzzle
 }: SudokuContextModel): () => void => {
     const checkSolved = (): boolean =>
         sudoku !== undefined &&
@@ -113,7 +113,7 @@ export const useTick = ({
                     setSolverTile(undefined)
                     setCurrentSolver(undefined)
                     setSolverQueue([])
-                    addMoney(PUZZLE_COMPLETE_BONUS)
+                    completeSolvedPuzzle()
                     return
                 }
                 if (currentSolver === undefined && solverTile === undefined) {
@@ -135,7 +135,7 @@ export const useTick = ({
 
                     for (let scan = 0; scan < speed.tilesPerTick; scan++) {
                         const previousValue = newSudoku[nextSolverTile].value
-                        newSudoku = runSolverStep(currentSolver.solve, newSudoku, nextSolverTile, solution)
+                        newSudoku = runSolverStep(currentSolver.solve, newSudoku, nextSolverTile, solution, solutionAssistChancePercent)
 
                         if (newSudoku[nextSolverTile].value !== undefined && newSudoku[nextSolverTile].value !== previousValue) {
                             solverDraftHelpers.forEach((helper) => {
@@ -167,6 +167,6 @@ export const useTick = ({
             return () => {
                 clearInterval(solverInterval)
             }
-        }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers, solverSpeedLevels, puzzleTransitionDelayMs, autoSolverCooldownUntil, autoQueueCooldownDelayMs])
+        }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers, solverSpeedLevels, puzzleTransitionDelayMs, autoSolverCooldownUntil, autoQueueCooldownDelayMs, solutionAssistChancePercent])
     }
 }

@@ -1,6 +1,7 @@
-export type UpgradeKind = 'unlock' | 'speed'
+export type UpgradeKind = 'unlock' | 'speed' | 'permanent'
 
 export const upgradeKindLabels: Record<UpgradeKind, string> = {
-    unlock: 'Déblocages',
-    speed: 'Vitesse'
+    unlock: 'Unlocks',
+    speed: 'Speed',
+    permanent: 'Permanent'
 }

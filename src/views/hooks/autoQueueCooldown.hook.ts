@@ -3,7 +3,9 @@ import { maxAutoQueueCooldownLevel, normalizeAutoQueueCooldownLevel } from '../.
 
 interface AutoQueueCooldownHook {
     autoQueueCooldownLevel: number
+    setAutoQueueCooldownLevel: (level: number) => void
     upgradeAutoQueueCooldown: () => void
+    resetAutoQueueCooldown: () => void
 }
 
 export const useAutoQueueCooldown = (): AutoQueueCooldownHook => {
@@ -15,8 +17,14 @@ export const useAutoQueueCooldown = (): AutoQueueCooldownHook => {
         setAutoQueueCooldownLevel(autoQueueCooldownLevel + 1)
     }
 
+    const resetAutoQueueCooldown = (): void => {
+        setAutoQueueCooldownLevel(0)
+    }
+
     return {
         autoQueueCooldownLevel,
-        upgradeAutoQueueCooldown
+        setAutoQueueCooldownLevel,
+        upgradeAutoQueueCooldown,
+        resetAutoQueueCooldown
     }
 }

@@ -9,6 +9,7 @@ export interface MoneyHook {
     money: number
     spend: (value: number) => boolean
     addMoney: (value: number) => void
+    setMoney: (value: number) => void
 }
 
 export const useMoney = (): MoneyHook => {
@@ -27,6 +28,7 @@ export const useMoney = (): MoneyHook => {
     return {
         money,
         addMoney,
-        spend
+        spend,
+        setMoney
     }
 }

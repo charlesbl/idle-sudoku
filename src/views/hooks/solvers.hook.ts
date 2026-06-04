@@ -12,6 +12,7 @@ interface SolverHook {
     setSolverQueue: (solvers: SudokuSolver[]) => void
     queueSolver: (solver: SudokuSolver) => void
     setAutoSolverActive: (solver: SudokuSolver, active: boolean) => void
+    resetSolvers: (solvers?: SudokuSolver[]) => void
 }
 
 export const useSolvers = (): SolverHook => {
@@ -35,7 +36,11 @@ export const useSolvers = (): SolverHook => {
         ids
             .map(id => getSolver(id))
             .filter((solver): solver is SudokuSolver => solver !== undefined)
-    const solvers = mapSolverIds([...new Set(solverIdsWithDefaults)])
+    const solvers = mapSolverIds([...new Set(solverIdsWithDefaults)]).sort((a, b) => {
+        const indexA = allSolvers.findIndex(solver => solver.id === a.id)
+        const indexB = allSolvers.findIndex(solver => solver.id === b.id)
+        return indexA - indexB
+    })
     const setSolvers = (solvers: SudokuSolver[]): void => { setSolverIds(solvers.map(solver => solver.id)) }
 
     const currentSolver = currentSolverId !== undefined ? getSolver(currentSolverId) : undefined
@@ -60,6 +65,12 @@ export const useSolvers = (): SolverHook => {
         setDisabledAutoSolverIds([...new Set([...disabledAutoSolverIds, solver.id])])
         setSolverQueueIds(solverQueueIds.filter(id => id !== solver.id))
     }
+    const resetSolvers = (nextSolvers: SudokuSolver[] = []): void => {
+        setCurrentSolverId(undefined)
+        setSolverQueueIds([])
+        setDisabledAutoSolverIds([])
+        setSolverIds(nextSolvers.map(solver => solver.id))
+    }
 
     return {
         solvers,
@@ -70,6 +81,7 @@ export const useSolvers = (): SolverHook => {
         setSolvers,
         setSolverQueue,
         queueSolver,
-        setAutoSolverActive
+        setAutoSolverActive,
+        resetSolvers
     }
 }
