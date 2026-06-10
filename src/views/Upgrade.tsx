@@ -122,7 +122,7 @@ const Upgrade = (props: UpgradeProps): JSX.Element => {
     }
 
     const tooltipText = props.locked
-        ? 'Finish the previous category first'
+        ? 'Unlock prerequisite solvers first'
         : unaffordable
             ? (props.currencyLabel === 'PP' ? 'Not enough PP' : `Not enough credits${refundAmount > 0 ? ` (Refunds ${formatNumber(refundAmount)} credits)` : ''}`)
             : `Purchase upgrade${refundAmount > 0 ? ` (Refunds ${formatNumber(refundAmount)} credits)` : ''}`

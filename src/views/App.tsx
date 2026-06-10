@@ -10,6 +10,7 @@ import {
 } from '../model/solvers/solverSpeed'
 import { formatPuzzleTransitionDelay } from '../model/puzzleTransition'
 import { formatNumber } from '../utils/utils'
+import { getDifficultyTier } from '../model/difficulty'
 
 // TODO add in right panel a button for each solver to activate it and pass only once, queue solvers if the first one is not finished.
 // TODO add selector for difficulty. more difficult = more money.
@@ -656,6 +657,92 @@ const EmptyState = styled.div`
     font-size: 0.92rem;
 `
 
+const DifficultyCard = styled(InfoCard)`
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.9rem 0.6rem;
+`
+
+const DifficultySelector = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.15rem;
+    gap: 0.5rem;
+`
+
+const DifficultyArrowButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.65rem;
+    height: 1.65rem;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 6px;
+    background: rgb(255 255 255 / 4.5%);
+    color: var(--text-strong);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 120ms ease;
+
+    &:hover:not(:disabled) {
+        border-color: rgb(81 214 194 / 60%);
+        background: rgb(81 214 194 / 10%);
+        color: var(--accent-strong);
+    }
+
+    &:disabled {
+        opacity: 0.2;
+        cursor: not-allowed;
+    }
+`
+
+const DifficultyInfo = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+`
+
+const DifficultyValue = styled.div`
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+
+    @media (width <= 620px) {
+        font-size: 1rem;
+    }
+`
+
+const DifficultyMultiplier = styled.div`
+    font-size: 0.78rem;
+    font-weight: 900;
+    color: var(--accent-strong);
+    margin-top: 0.05rem;
+`
+
+const DifficultySubtext = styled.div`
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-top: 0.4rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+`
+
 const App = (): JSX.Element => {
     const {
         sudoku,
@@ -675,6 +762,9 @@ const App = (): JSX.Element => {
         prestigeLevel,
         prestigePoints,
         prestigeGoal,
+        selectedDifficultyIndex,
+        changeDifficulty,
+        prestigeReward,
         manualVeryEasySolvedCount,
         manualVeryEasySolvedGoal,
         manualOpeningComplete,
@@ -692,7 +782,10 @@ const App = (): JSX.Element => {
         autoSolverQueueEnabled,
         autoSolverCooldownUntil,
         autoQueueCooldownDelayMs,
-        setAutoSolverQueueEnabled
+        setAutoSolverQueueEnabled,
+        autoPrestigeUnlocked,
+        autoPrestigeEnabled,
+        setAutoPrestigeEnabled
     } = useSudoku()
     const canQueueSolvers = hasUpgradeFeature('solverQueue') || hasUpgradeFeature('autoSolverQueue')
     const hasAutoQueueUpgrade = hasUpgradeFeature('autoSolverQueue')
@@ -802,19 +895,55 @@ const App = (): JSX.Element => {
                         </InfoValue>
                     </InfoCard>
 
-                    <InfoCard>
+                    <DifficultyCard>
                         <InfoLabel>Difficulty</InfoLabel>
+                        <DifficultySelector>
+                            <DifficultyArrowButton
+                                disabled={selectedDifficultyIndex <= 0}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    changeDifficulty(selectedDifficultyIndex - 1)
+                                }}
+                                title="Previous difficulty"
+                            >
+                                ◀
+                            </DifficultyArrowButton>
+                            
+                            <DifficultyInfo>
+                                <DifficultyValue>
+                                    {difficultyTier.label}
+                                </DifficultyValue>
+                                <DifficultyMultiplier>
+                                    x{formatNumber(difficultyTier.rewardMultiplier)}
+                                </DifficultyMultiplier>
+                            </DifficultyInfo>
 
-                        <InfoValue>
-                            {difficultyTier.label}
-                        </InfoValue>
-                    </InfoCard>
+                            <DifficultyArrowButton
+                                disabled={selectedDifficultyIndex >= prestigeLevel}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    changeDifficulty(selectedDifficultyIndex + 1)
+                                }}
+                                title={selectedDifficultyIndex >= prestigeLevel ? `Unlock prestige to play harder grids` : "Next difficulty"}
+                            >
+                                {selectedDifficultyIndex >= prestigeLevel ? '🔒' : '▶'}
+                            </DifficultyArrowButton>
+                        </DifficultySelector>
+                        
+                        <DifficultySubtext>
+                            {selectedDifficultyIndex < prestigeLevel ? (
+                                `Next: ${getDifficultyTier(selectedDifficultyIndex + 1).label} (x${formatNumber(getDifficultyTier(selectedDifficultyIndex + 1).rewardMultiplier)})`
+                            ) : (
+                                `Next: ${getDifficultyTier(prestigeLevel + 1).label} (x${formatNumber(getDifficultyTier(prestigeLevel + 1).rewardMultiplier)}) at Prestige ${prestigeLevel + 1}`
+                            )}
+                        </DifficultySubtext>
+                    </DifficultyCard>
 
                     <InfoCard>
                         <InfoLabel>Prestige</InfoLabel>
 
                         <InfoValue $accent={prestigePoints > 0}>
-                            {`${prestigeLevel} / ${formatNumber(prestigePoints)} PP`}
+                            {`${prestigeLevel} / ${formatNumber(prestigePoints)} PP${autoPrestigeUnlocked && autoPrestigeEnabled ? ' (Auto)' : ''}`}
                         </InfoValue>
                     </InfoCard>
 
@@ -946,16 +1075,34 @@ const App = (): JSX.Element => {
                         >
                             Prestige +
 
-                            {formatNumber(difficultyTier.prestigeReward)}
+                            {formatNumber(prestigeReward)}
 
                             PP
                         </ActionButton>
                         <Tooltip role="tooltip">
                             {canPrestige
-                                ? `Reset progress and earn ${formatNumber(difficultyTier.prestigeReward)} PP`
+                                ? `Reset progress and earn ${formatNumber(prestigeReward)} PP`
                                 : `Requires reaching ${formatNumber(prestigeGoal)} credits`}
                         </Tooltip>
                     </TooltipAnchor>
+
+                    {autoPrestigeUnlocked && (
+                        <TooltipAnchor>
+                            <ActionButton
+                                $active={autoPrestigeEnabled}
+                                aria-pressed={autoPrestigeEnabled}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setAutoPrestigeEnabled(!autoPrestigeEnabled)
+                                }}
+                            >
+                                Auto-prestige: {autoPrestigeEnabled ? 'On' : 'Off'}
+                            </ActionButton>
+                            <Tooltip role="tooltip">
+                                Automatically prestige when the prestige goal is reached
+                            </Tooltip>
+                        </TooltipAnchor>
+                    )}
 
                     <TooltipAnchor>
                         <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>

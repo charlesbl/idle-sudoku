@@ -2,10 +2,10 @@ import { useState } from 'react'
 import Upgrade from './Upgrade'
 import styled from 'styled-components'
 import { useSudoku } from './hooks/sudoku.context'
+import { areSolverPrerequisitesUnlocked } from '../model/solvers/sudokuSolver'
 import { Tooltip, TooltipAnchor } from './Tooltip'
 import { type UpgradeKind, upgradeKindLabels } from '../model/upgrades/upgrade'
 import {
-    getCurrentUnlockUpgradeCategory,
     unlockUpgradeCategoryLabels,
     unlockUpgradeCategoryOrder
 } from '../model/upgrades/unlockUpgrade'
@@ -176,6 +176,7 @@ const Upgrades = (): JSX.Element => {
         unlockUpgrades,
         permanentUpgrades,
         solvers,
+        permanentSolvers,
         getSolverSpeedLevel,
         hasUpgradeFeature,
         purchaseSolverSpeedUpgrade,
@@ -188,11 +189,25 @@ const Upgrades = (): JSX.Element => {
         prestigePoints,
         purchasePermanentUpgrade,
         isShiftPressed,
-        money
+        money,
+        permanentSolverSpeedLevel,
+        permanentGridTimingLevel,
+        permanentAutoQueueCooldownLevel,
+        permanentSolutionAssistChanceLevel,
+        purchasePermanentSolverSpeedLevel,
+        purchasePermanentGridTimingLevel,
+        purchasePermanentAutoQueueCooldownLevel,
+        purchasePermanentSolutionAssistChanceLevel,
+        autoPrestigeUnlocked,
+        purchasePermanentAutoPrestige
     } = useSudoku()
+
+    const hasAnyPermanentSpeedUpgrade = permanentSolverSpeedLevel < maxSolverSpeedLevel ||
+        permanentGridTimingLevel < maxPuzzleTransitionLevel ||
+        permanentAutoQueueCooldownLevel < maxAutoQueueCooldownLevel ||
+        permanentSolutionAssistChanceLevel < maxSolutionAssistChanceLevel ||
+        !autoPrestigeUnlocked
     const [selectedUpgradeKind, setSelectedUpgradeKind] = useState<UpgradeKind>('unlock')
-    const currentUnlockUpgradeCategory = getCurrentUnlockUpgradeCategory(unlockUpgrades)
-    const currentPermanentUpgradeCategory = getCurrentUnlockUpgradeCategory(permanentUpgrades)
     const unlockUpgradeSections = unlockUpgradeCategoryOrder
         .map(category => ({
             category,
@@ -370,7 +385,7 @@ const Upgrades = (): JSX.Element => {
         .filter(section => section.upgrades.length > 0)
     const hasUnlockUpgrades = unlockUpgrades.length > 0
     const hasSpeedUpgrades = speedUpgrades.length > 0
-    const hasPermanentUpgrades = permanentUpgrades.length > 0
+    const hasPermanentUpgrades = permanentUpgrades.length > 0 || hasAnyPermanentSpeedUpgrade
     const hasAvailableUpgrades = hasUnlockUpgrades || hasSpeedUpgrades || hasPermanentUpgrades
     const availableUpgradeKinds: UpgradeKind[] = [
         ...(hasUnlockUpgrades ? ['unlock' as const] : []),
@@ -443,14 +458,13 @@ const Upgrades = (): JSX.Element => {
 
                         <UpgradesContainer>
                             {activeUpgradeKind === 'unlock' && unlockUpgradeSections.map((section) => {
-                                const locked = section.category !== currentUnlockUpgradeCategory
-
                                 return (
                                     <UpgradeSection key={section.category}>
                                         <CategoryTitle>{unlockUpgradeCategoryLabels[section.category]}</CategoryTitle>
 
                                         <CategoryList>
                                             {section.upgrades.map((upgrade) => {
+                                                const locked = upgrade.solver !== undefined && !areSolverPrerequisitesUnlocked(solvers, upgrade.solver)
                                                 return (
                                                     <Upgrade
                                                         key={upgrade.id}
@@ -483,32 +497,104 @@ const Upgrades = (): JSX.Element => {
                                 </UpgradeSection>
                             ))}
 
-                            {activeUpgradeKind === 'permanent' && permanentUpgradeSections.map((section) => {
-                                const locked = section.category !== currentPermanentUpgradeCategory
+                            {activeUpgradeKind === 'permanent' && (
+                                <>
+                                    {hasAnyPermanentSpeedUpgrade && (
+                                        <UpgradeSection key="permanent-speeds">
+                                            <CategoryTitle>Permanent speed upgrades</CategoryTitle>
 
-                                return (
-                                    <UpgradeSection key={section.category}>
-                                        <CategoryTitle>{unlockUpgradeCategoryLabels[section.category]}</CategoryTitle>
-
-                                        <CategoryList>
-                                            {section.upgrades.map((upgrade) => {
-                                                return (
+                                            <CategoryList>
+                                                {permanentSolverSpeedLevel < maxSolverSpeedLevel && (
                                                     <Upgrade
                                                         availableAmount={prestigePoints}
-                                                        cost={upgrade.permanentCost}
+                                                        cost={2 * (permanentSolverSpeedLevel + 1)}
                                                         currencyLabel="PP"
-                                                        description={`Permanent. ${upgrade.description}`}
-                                                        key={upgrade.id}
-                                                        locked={locked}
-                                                        name={upgrade.name}
-                                                        onPurchase={() => { purchasePermanentUpgrade(upgrade) }}
+                                                        description={`Permanent. All solvers start with +${permanentSolverSpeedLevel} levels of speed. Next level: +${permanentSolverSpeedLevel + 1}/${maxSolverSpeedLevel}.`}
+                                                        key="perm-solver-speed"
+                                                        locked={false}
+                                                        name="Permanent Solver Speed"
+                                                        onPurchase={purchasePermanentSolverSpeedLevel}
                                                     />
-                                                )
-                                            })}
-                                        </CategoryList>
-                                    </UpgradeSection>
-                                )
-                            })}
+                                                )}
+                                                {permanentGridTimingLevel < maxPuzzleTransitionLevel && (
+                                                    <Upgrade
+                                                        availableAmount={prestigePoints}
+                                                        cost={permanentGridTimingLevel + 1}
+                                                        currencyLabel="PP"
+                                                        description={`Permanent. Grids transition +${permanentGridTimingLevel} levels faster. Next level: +${permanentGridTimingLevel + 1}/${maxPuzzleTransitionLevel}.`}
+                                                        key="perm-grid-timing"
+                                                        locked={false}
+                                                        name="Permanent Grid Timing"
+                                                        onPurchase={purchasePermanentGridTimingLevel}
+                                                    />
+                                                )}
+                                                {permanentAutoQueueCooldownLevel < maxAutoQueueCooldownLevel && (
+                                                    <Upgrade
+                                                        availableAmount={prestigePoints}
+                                                        cost={permanentAutoQueueCooldownLevel + 1}
+                                                        currencyLabel="PP"
+                                                        description={`Permanent. Auto-queue starts +${permanentAutoQueueCooldownLevel} levels faster. Next level: +${permanentAutoQueueCooldownLevel + 1}/${maxAutoQueueCooldownLevel}.`}
+                                                        key="perm-auto-queue"
+                                                        locked={false}
+                                                        name="Permanent Auto Queue Cooldown"
+                                                        onPurchase={purchasePermanentAutoQueueCooldownLevel}
+                                                    />
+                                                )}
+                                                {permanentSolutionAssistChanceLevel < maxSolutionAssistChanceLevel && (
+                                                    <Upgrade
+                                                        availableAmount={prestigePoints}
+                                                        cost={permanentSolutionAssistChanceLevel + 1}
+                                                        currencyLabel="PP"
+                                                        description={`Permanent. Lucky solutions start with +${permanentSolutionAssistChanceLevel} levels of chance. Next level: +${permanentSolutionAssistChanceLevel + 1}/${maxSolutionAssistChanceLevel}.`}
+                                                        key="perm-solution-assist"
+                                                        locked={false}
+                                                        name="Permanent Lucky Solution Chance"
+                                                        onPurchase={purchasePermanentSolutionAssistChanceLevel}
+                                                    />
+                                                )}
+                                                {!autoPrestigeUnlocked && (
+                                                    <Upgrade
+                                                        availableAmount={prestigePoints}
+                                                        cost={6}
+                                                        currencyLabel="PP"
+                                                        description="Permanent. Automatically prestige when the prestige goal is reached."
+                                                        key="perm-auto-prestige"
+                                                        locked={false}
+                                                        name="Auto-prestige"
+                                                        onPurchase={purchasePermanentAutoPrestige}
+                                                    />
+                                                )}
+                                            </CategoryList>
+                                        </UpgradeSection>
+                                    )}
+
+                                    {permanentUpgradeSections.map((section) => {
+                                        return (
+                                            <UpgradeSection key={section.category}>
+                                                <CategoryTitle>{unlockUpgradeCategoryLabels[section.category]}</CategoryTitle>
+
+                                                <CategoryList>
+                                                    {section.upgrades.map((upgrade) => {
+                                                        const locked = upgrade.solver !== undefined && !areSolverPrerequisitesUnlocked(permanentSolvers, upgrade.solver)
+                                                        return (
+                                                            <Upgrade
+                                                                availableAmount={prestigePoints}
+                                                                cost={upgrade.permanentCost}
+                                                                currencyLabel="PP"
+                                                                description={`Permanent. ${upgrade.description}`}
+                                                                key={upgrade.id}
+                                                                locked={locked}
+                                                                name={upgrade.name}
+                                                                onPurchase={() => { purchasePermanentUpgrade(upgrade) }}
+                                                            />
+                                                        )
+                                                    })}
+                                                </CategoryList>
+                                            </UpgradeSection>
+                                        )
+                                    })}
+                                </>
+                            )}
                         </UpgradesContainer>
                     </>
                 )

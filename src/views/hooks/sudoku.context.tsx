@@ -3,36 +3,35 @@ import type React from 'react'
 import { generateSudoku, type SudokuModel } from '../../model/sudoku.model'
 import {
     allUnlockUpgrades,
-    draftHelpersPermanentUpgrade,
-    getCurrentUnlockUpgradeCategory,
     isUnlockUpgradeCategoryAvailable,
     unlockUpgradeCategoryOrder,
     type UnlockUpgradeModel,
     type UpgradeFeature
 } from '../../model/upgrades/unlockUpgrade'
 import useLocalStorageState from 'use-local-storage-state'
-import { type SudokuSolver } from '../../model/solvers/sudokuSolver'
+import { type SudokuSolver, areSolverPrerequisitesUnlocked } from '../../model/solvers/sudokuSolver'
 import { useTick } from './tick.effect'
 import { useSolvers } from './solvers.hook'
 import { useUpgrades } from './upgrades.hook'
 import { CORRECT_TILE_REWARD, PUZZLE_COMPLETE_BONUS, useMoney } from './money.hook'
 import { trackSudokuErrors } from '../../model/solvers/errorTracker'
-import { blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../../model/draftHelpers/draftHelpers'
-import { useDraftHelpers } from './draftHelpers.hook'
+import { allDraftHelpers as draftHelpers, blockDraftHelper, columnDraftHelper, type DraftHelper, rowDraftHelper } from '../../model/draftHelpers/draftHelpers'
 import { useSolverSpeeds, type SolverSpeedLevels } from './solverSpeeds.hook'
-import { getSolverSpeedUpgradeCost, getSolverTotalSpeedUpgradeSpent, maxSolverSpeedLevel } from '../../model/solvers/solverSpeed'
+import { getSolverSpeedUpgradeCost, getSolverTotalSpeedUpgradeSpent, maxSolverSpeedLevel, normalizeSolverSpeedLevel } from '../../model/solvers/solverSpeed'
 import { usePuzzleTransition } from './puzzleTransition.hook'
 import {
     getPuzzleTransitionLevel,
     getPuzzleTransitionUpgradeCost,
-    maxPuzzleTransitionLevel
+    maxPuzzleTransitionLevel,
+    normalizePuzzleTransitionLevel
 } from '../../model/puzzleTransition'
 import { fillValidDrafts } from '../../model/drafts'
 import { useAutoQueueCooldown } from './autoQueueCooldown.hook'
 import {
     getAutoQueueCooldownLevel,
     getAutoQueueCooldownUpgradeCost,
-    maxAutoQueueCooldownLevel
+    maxAutoQueueCooldownLevel,
+    normalizeAutoQueueCooldownLevel
 } from '../../model/autoQueueCooldown'
 import { getDifficultyTier, type DifficultyTier, type GameDifficulty } from '../../model/difficulty'
 import { createPermanentUpgradeModel, type PermanentUpgradeModel } from '../../model/upgrades/permanentUpgrade'
@@ -40,14 +39,14 @@ import { useSolutionAssistChance } from './solutionAssistChance.hook'
 import {
     getSolutionAssistChanceLevel,
     getSolutionAssistChanceUpgradeCost,
-    maxSolutionAssistChanceLevel
+    maxSolutionAssistChanceLevel,
+    normalizeSolutionAssistChanceLevel
 } from '../../model/solvers/solutionAssistChance'
 
 const MANUAL_VERY_EASY_SOLVED_GOAL = 3
 
 interface AppliedUnlockState {
     solvers: SudokuSolver[]
-    draftHelpers: DraftHelper[]
     features: UpgradeFeature[]
 }
 
@@ -77,6 +76,7 @@ export interface SudokuContextModel {
     purchasePuzzleTransitionUpgrade: (buyMax?: boolean) => void
     unlockUpgrades: UnlockUpgradeModel[]
     permanentUpgrades: PermanentUpgradeModel[]
+    permanentSolvers: SudokuSolver[]
     upgradeFeatures: UpgradeFeature[]
     setUnlockUpgrades: (upgrades: UnlockUpgradeModel[]) => void
     hasUpgradeFeature: (feature: UpgradeFeature) => boolean
@@ -90,6 +90,10 @@ export interface SudokuContextModel {
     purchaseSolutionAssistChanceUpgrade: (buyMax?: boolean) => void
     setAutoSolverQueueEnabled: React.Dispatch<React.SetStateAction<boolean>>
     setAutoSolverCooldownUntil: React.Dispatch<React.SetStateAction<number | undefined>>
+    autoPrestigeUnlocked: boolean
+    autoPrestigeEnabled: boolean
+    setAutoPrestigeEnabled: React.Dispatch<React.SetStateAction<boolean>>
+    purchasePermanentAutoPrestige: () => void
     cheatSolve: () => void
     reset: () => void
     isSolved: boolean
@@ -102,7 +106,6 @@ export interface SudokuContextModel {
     purchasePermanentUpgrade: (upgrade: PermanentUpgradeModel) => void
     draftHelpers: DraftHelper[]
     solverDraftHelpers: DraftHelper[]
-    addDraftHelper: (id: string) => void
     difficultyTier: DifficultyTier
     prestigeLevel: number
     prestigePoints: number
@@ -113,33 +116,34 @@ export interface SudokuContextModel {
     canPrestige: boolean
     prestige: () => void
     completeSolvedPuzzle: () => void
+    selectedDifficultyIndex: number
+    changeDifficulty: (index: number) => void
+    prestigeReward: number
+    permanentSolverSpeedLevel: number
+    permanentGridTimingLevel: number
+    permanentAutoQueueCooldownLevel: number
+    permanentSolutionAssistChanceLevel: number
+    purchasePermanentSolverSpeedLevel: () => void
+    purchasePermanentGridTimingLevel: () => void
+    purchasePermanentAutoQueueCooldownLevel: () => void
+    purchasePermanentSolutionAssistChanceLevel: () => void
 }
 
 const SudokuContext = createContext<SudokuContextModel>({} as any)
 
 const getUpgradeRemovalIds = (upgrade: UnlockUpgradeModel): Set<string> => {
     const replacedSolverIds = upgrade.solver?.replaces?.map(solver => solver.id) ?? []
-    const ids = new Set([
+    return new Set([
         upgrade.id,
         ...allUnlockUpgrades
             .filter(candidate => candidate.solver !== undefined && replacedSolverIds.includes(candidate.solver.id))
             .map(candidate => candidate.id)
     ])
-    if (upgrade.id === 'draft-helpers-upgrade') {
-        ids.add('row-draft-helper-upgrade')
-        ids.add('column-draft-helper-upgrade')
-        ids.add('block-draft-helper-upgrade')
-    }
-    return ids
 }
 
 const getPermanentUnlockUpgrades = (permanentUpgradeIds: string[]): UnlockUpgradeModel[] => {
     const permanentUpgradeIdsSet = new Set(permanentUpgradeIds)
-    const upgrades = allUnlockUpgrades.filter(upgrade => permanentUpgradeIdsSet.has(upgrade.id))
-    if (permanentUpgradeIdsSet.has(draftHelpersPermanentUpgrade.id)) {
-        upgrades.push(draftHelpersPermanentUpgrade)
-    }
-    return upgrades
+    return allUnlockUpgrades.filter(upgrade => permanentUpgradeIdsSet.has(upgrade.id))
 }
 
 const getPermanentlyCoveredUpgradeIds = (permanentUpgradeIds: string[]): Set<string> => {
@@ -152,9 +156,6 @@ const getPermanentlyCoveredUpgradeIds = (permanentUpgradeIds: string[]): Set<str
 
 const sortUnlockUpgrades = (upgrades: UnlockUpgradeModel[]): UnlockUpgradeModel[] => {
     const getIndex = (upgrade: UnlockUpgradeModel): number => {
-        if (upgrade.id === 'draft-helpers-upgrade') {
-            return -1
-        }
         return allUnlockUpgrades.findIndex(u => u.id === upgrade.id)
     }
     return [...upgrades].sort((a, b) => getIndex(a) - getIndex(b))
@@ -173,27 +174,15 @@ const getAppliedUnlockState = (upgrades: UnlockUpgradeModel[]): AppliedUnlockSta
         const solvers = upgrade.solver !== undefined
             ? addSolverToState(state.solvers, upgrade.solver)
             : state.solvers
-        let draftHelpers = state.draftHelpers
-        if (upgrade.draftHelper !== undefined && !draftHelpers.some(helper => helper.id === upgrade.draftHelper?.id)) {
-            draftHelpers = [...draftHelpers, upgrade.draftHelper]
-        }
-        if (upgrade.draftHelpers !== undefined) {
-            upgrade.draftHelpers.forEach(helper => {
-                if (!draftHelpers.some(h => h.id === helper.id)) {
-                    draftHelpers = [...draftHelpers, helper]
-                }
-            })
-        }
         const features = upgrade.feature !== undefined && !state.features.includes(upgrade.feature)
             ? [...state.features, upgrade.feature]
             : state.features
 
         return {
             solvers,
-            draftHelpers,
             features
         }
-    }, { solvers: [], draftHelpers: [], features: [] })
+    }, { solvers: [], features: [] })
 }
 
 const getRemainingUnlockUpgrades = (permanentUpgradeIds: string[]): UnlockUpgradeModel[] => {
@@ -226,17 +215,18 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [isSolved, setIsSolved] = useLocalStorageState<boolean>('isSolved', { defaultValue: false })
     const [autoSolverQueueEnabled, setStoredAutoSolverQueueEnabled] = useLocalStorageState<boolean>('autoSolverQueueEnabled', { defaultValue: true })
     const [autoSolverCooldownUntil, setAutoSolverCooldownUntil] = useState<number | undefined>(undefined)
+    const [autoPrestigeEnabled, setAutoPrestigeEnabled] = useLocalStorageState<boolean>('autoPrestigeEnabled', { defaultValue: true })
+    const [autoPrestigeUnlocked, setAutoPrestigeUnlocked] = useLocalStorageState<boolean>('autoPrestigeUnlocked', { defaultValue: false })
     const [rewardedTileIndexes, setRewardedTileIndexes] = useLocalStorageState<number[]>('rewardedTileIndexes', { defaultValue: [] })
     const [prestigeLevel, setPrestigeLevel] = useLocalStorageState<number>('prestigeLevel', { defaultValue: 0 })
+    const [selectedDifficultyIndex, setSelectedDifficultyIndex] = useLocalStorageState<number>('selectedDifficultyIndex', { defaultValue: 0 })
     const [prestigePoints, setPrestigePoints] = useLocalStorageState<number>('prestigePoints', { defaultValue: 0 })
     const [permanentUpgradeIds, setPermanentUpgradeIds] = useLocalStorageState<string[]>('permanentUpgradeIds', { defaultValue: [] })
 
-    // Migration for permanent draft helper upgrades:
-    // If they bought any of the old draft helpers permanently, convert it to the new merged permanent upgrade
-    const oldDraftHelperUpgradeIds = ['row-draft-helper-upgrade', 'column-draft-helper-upgrade', 'block-draft-helper-upgrade']
-    if (permanentUpgradeIds.some(id => oldDraftHelperUpgradeIds.includes(id))) {
-        const filteredIds = permanentUpgradeIds.filter(id => !oldDraftHelperUpgradeIds.includes(id))
-        filteredIds.push('draft-helpers-upgrade')
+    // Migration for permanent draft helper upgrades: since they are unlocked by default, remove them from permanentUpgradeIds
+    const draftHelperUpgradeIds = ['row-draft-helper-upgrade', 'column-draft-helper-upgrade', 'block-draft-helper-upgrade', 'draft-helpers-upgrade']
+    if (permanentUpgradeIds.some(id => draftHelperUpgradeIds.includes(id))) {
+        const filteredIds = permanentUpgradeIds.filter(id => !draftHelperUpgradeIds.includes(id))
         setPermanentUpgradeIds([...new Set(filteredIds)])
     }
 
@@ -268,9 +258,12 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         }
     }, [])
 
-    const difficultyTier = getDifficultyTier(prestigeLevel)
+    const currentDifficultyIndex = Math.min(selectedDifficultyIndex, prestigeLevel)
+    const difficultyTier = getDifficultyTier(currentDifficultyIndex)
+    const prestigeReward = getDifficultyTier(prestigeLevel).prestigeReward
     const manualOpeningComplete = true
     const permanentlyCoveredUpgradeIds = getPermanentlyCoveredUpgradeIds(permanentUpgradeIds)
+    const permanentSolvers = getAppliedUnlockState(getPermanentUnlockUpgrades(permanentUpgradeIds)).solvers
 
     const {
         unlockUpgrades: storedUnlockUpgrades,
@@ -294,46 +287,40 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     } = useSolvers()
 
     const { money, addMoney, spend, setMoney } = useMoney()
-    const { draftHelpers, addDraftHelper, setDraftHelpers } = useDraftHelpers()
-
-    // Ensure that if 'draft-helpers-upgrade' is bought permanently, all three draft helpers are active
-    useEffect(() => {
-        if (permanentUpgradeIds.includes('draft-helpers-upgrade')) {
-            const hasRow = draftHelpers.some(h => h.id === 'row')
-            const hasColumn = draftHelpers.some(h => h.id === 'column')
-            const hasBlock = draftHelpers.some(h => h.id === 'block')
-            if (!hasRow || !hasColumn || !hasBlock) {
-                addDraftHelper('row')
-                addDraftHelper('column')
-                addDraftHelper('block')
-            }
-        }
-    }, [permanentUpgradeIds, draftHelpers, addDraftHelper])
     const {
         solverSpeedLevels,
-        getSolverSpeedLevel,
+        getSolverSpeedLevel: storedGetSolverSpeedLevel,
         setSolverSpeedLevel,
-        upgradeSolverSpeed,
         resetSolverSpeeds
     } = useSolverSpeeds()
     const {
-        puzzleTransitionLevel,
+        puzzleTransitionLevel: storedPuzzleTransitionLevel,
         setPuzzleTransitionLevel,
-        upgradePuzzleTransition,
         resetPuzzleTransition
     } = usePuzzleTransition()
     const {
-        autoQueueCooldownLevel,
+        autoQueueCooldownLevel: storedAutoQueueCooldownLevel,
         setAutoQueueCooldownLevel,
-        upgradeAutoQueueCooldown,
         resetAutoQueueCooldown
     } = useAutoQueueCooldown()
     const {
-        solutionAssistChanceLevel,
+        solutionAssistChanceLevel: storedSolutionAssistChanceLevel,
         setSolutionAssistChanceLevel,
-        upgradeSolutionAssistChance,
         resetSolutionAssistChance
     } = useSolutionAssistChance()
+
+    const [permanentSolverSpeedLevel, setPermanentSolverSpeedLevel] = useLocalStorageState<number>('permanentSolverSpeedLevel', { defaultValue: 0 })
+    const [permanentGridTimingLevel, setPermanentGridTimingLevel] = useLocalStorageState<number>('permanentGridTimingLevel', { defaultValue: 0 })
+    const [permanentAutoQueueCooldownLevel, setPermanentAutoQueueCooldownLevel] = useLocalStorageState<number>('permanentAutoQueueCooldownLevel', { defaultValue: 0 })
+    const [permanentSolutionAssistChanceLevel, setPermanentSolutionAssistChanceLevel] = useLocalStorageState<number>('permanentSolutionAssistChanceLevel', { defaultValue: 0 })
+
+    const getSolverSpeedLevel = (solver: SudokuSolver): number =>
+        normalizeSolverSpeedLevel(storedGetSolverSpeedLevel(solver) + (permanentSolverSpeedLevel ?? 0))
+
+    const puzzleTransitionLevel = normalizePuzzleTransitionLevel(storedPuzzleTransitionLevel + (permanentGridTimingLevel ?? 0))
+    const autoQueueCooldownLevel = normalizeAutoQueueCooldownLevel(storedAutoQueueCooldownLevel + (permanentAutoQueueCooldownLevel ?? 0))
+    const solutionAssistChanceLevel = normalizeSolutionAssistChanceLevel(storedSolutionAssistChanceLevel + (permanentSolutionAssistChanceLevel ?? 0))
+
     const puzzleTransitionDelayMs = getPuzzleTransitionLevel(puzzleTransitionLevel).delayMs
     const autoQueueCooldownDelayMs = getAutoQueueCooldownLevel(autoQueueCooldownLevel).delayMs
     const solutionAssistChancePercent = getSolutionAssistChanceLevel(solutionAssistChanceLevel).chancePercent
@@ -344,21 +331,14 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     ].filter((helper): helper is DraftHelper => helper !== undefined)
     const unlockUpgrades = storedUnlockUpgrades.filter(upgrade =>
         !permanentlyCoveredUpgradeIds.has(upgrade.id) &&
-        isUpgradeAvailable(upgrade, difficultyTier.difficulty, manualOpeningComplete)
+        isUpgradeAvailable(upgrade, getDifficultyTier(prestigeLevel).difficulty, manualOpeningComplete)
     )
-    const permanentUpgrades = [
-        ...(!permanentlyCoveredUpgradeIds.has(draftHelpersPermanentUpgrade.id) &&
-        isUpgradeAvailable(draftHelpersPermanentUpgrade, difficultyTier.difficulty, manualOpeningComplete)
-            ? [createPermanentUpgradeModel(draftHelpersPermanentUpgrade)]
-            : []),
-        ...allUnlockUpgrades
-            .filter(upgrade =>
-                upgrade.category !== 'draftHelpers' &&
-                !permanentlyCoveredUpgradeIds.has(upgrade.id) &&
-                isUpgradeAvailable(upgrade, difficultyTier.difficulty, manualOpeningComplete)
-            )
-            .map(createPermanentUpgradeModel)
-    ]
+    const permanentUpgrades = allUnlockUpgrades
+        .filter(upgrade =>
+            !permanentlyCoveredUpgradeIds.has(upgrade.id) &&
+            isUpgradeAvailable(upgrade, getDifficultyTier(prestigeLevel).difficulty, manualOpeningComplete)
+        )
+        .map(createPermanentUpgradeModel)
     const totalUnlockUpgradesCost = allUnlockUpgrades.reduce((sum, upgrade) => sum + upgrade.cost, 0)
     const prestigeGoal = totalUnlockUpgradesCost * Math.pow(2, prestigeLevel)
     const canPrestige = money >= prestigeGoal
@@ -470,14 +450,6 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             }
             setSolvers(newSolvers)
         }
-        if (upgrade.draftHelper !== undefined) {
-            addDraftHelper(upgrade.draftHelper.id)
-        }
-        if (upgrade.draftHelpers !== undefined) {
-            upgrade.draftHelpers.forEach(helper => {
-                addDraftHelper(helper.id)
-            })
-        }
         if (upgrade.feature !== undefined) {
             unlockUpgradeFeature(upgrade.feature)
             if (upgrade.feature === 'autoSolverQueue') setAutoSolverQueueEnabled(true)
@@ -486,7 +458,8 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const purchaseUnlockUpgrade = (upgrade: UnlockUpgradeModel): void => {
         const upgradeAvailable = unlockUpgrades.some((availableUpgrade) => availableUpgrade.id === upgrade.id)
-        if (!upgradeAvailable || upgrade.category !== getCurrentUnlockUpgradeCategory(unlockUpgrades)) return
+        if (!upgradeAvailable) return
+        if (upgrade.solver !== undefined && !areSolverPrerequisitesUnlocked(solvers, upgrade.solver)) return
 
         const spent = spend(upgrade.cost)
         if (!spent) return
@@ -497,7 +470,8 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
 
     const purchasePermanentUpgrade = (upgrade: PermanentUpgradeModel): void => {
         const upgradeAvailable = permanentUpgrades.some((availableUpgrade) => availableUpgrade.id === upgrade.id)
-        if (!upgradeAvailable || upgrade.category !== getCurrentUnlockUpgradeCategory(permanentUpgrades)) return
+        if (!upgradeAvailable) return
+        if (upgrade.solver !== undefined && !areSolverPrerequisitesUnlocked(permanentSolvers, upgrade.solver)) return
         if (prestigePoints < upgrade.permanentCost) return
 
         setPrestigePoints(currentPrestigePoints => currentPrestigePoints - upgrade.permanentCost)
@@ -527,13 +501,13 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             if (tempLevel > currentLevel) {
                 const spent = spend(totalCost)
                 if (spent) {
-                    setSolverSpeedLevel(solver, tempLevel)
+                    setSolverSpeedLevel(solver, tempLevel - (permanentSolverSpeedLevel ?? 0))
                 }
             }
         } else {
             const spent = spend(getSolverSpeedUpgradeCost(currentLevel))
             if (!spent) return
-            upgradeSolverSpeed(solver)
+            setSolverSpeedLevel(solver, (solverSpeedLevels[solver.id] ?? 0) + 1)
         }
     }
 
@@ -555,13 +529,13 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             if (tempLevel > puzzleTransitionLevel) {
                 const spent = spend(totalCost)
                 if (spent) {
-                    setPuzzleTransitionLevel(tempLevel)
+                    setPuzzleTransitionLevel(tempLevel - (permanentGridTimingLevel ?? 0))
                 }
             }
         } else {
             const spent = spend(getPuzzleTransitionUpgradeCost(puzzleTransitionLevel))
             if (!spent) return
-            upgradePuzzleTransition()
+            setPuzzleTransitionLevel(storedPuzzleTransitionLevel + 1)
         }
     }
 
@@ -585,14 +559,14 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
                 const spent = spend(totalCost)
                 if (spent) {
                     setAutoSolverCooldownUntil(undefined)
-                    setAutoQueueCooldownLevel(tempLevel)
+                    setAutoQueueCooldownLevel(tempLevel - (permanentAutoQueueCooldownLevel ?? 0))
                 }
             }
         } else {
             const spent = spend(getAutoQueueCooldownUpgradeCost(autoQueueCooldownLevel))
             if (!spent) return
             setAutoSolverCooldownUntil(undefined)
-            upgradeAutoQueueCooldown()
+            setAutoQueueCooldownLevel(storedAutoQueueCooldownLevel + 1)
         }
     }
 
@@ -614,14 +588,46 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
             if (tempLevel > solutionAssistChanceLevel) {
                 const spent = spend(totalCost)
                 if (spent) {
-                    setSolutionAssistChanceLevel(tempLevel)
+                    setSolutionAssistChanceLevel(tempLevel - (permanentSolutionAssistChanceLevel ?? 0))
                 }
             }
         } else {
             const spent = spend(getSolutionAssistChanceUpgradeCost(solutionAssistChanceLevel))
             if (!spent) return
-            upgradeSolutionAssistChance()
+            setSolutionAssistChanceLevel(storedSolutionAssistChanceLevel + 1)
         }
+    }
+
+    const purchasePermanentSolverSpeedLevel = (): void => {
+        if (permanentSolverSpeedLevel >= maxSolverSpeedLevel) return
+        const cost = 2 * (permanentSolverSpeedLevel + 1)
+        if (prestigePoints < cost) return
+        setPrestigePoints(current => current - cost)
+        setPermanentSolverSpeedLevel(current => current + 1)
+    }
+
+    const purchasePermanentGridTimingLevel = (): void => {
+        if (permanentGridTimingLevel >= maxPuzzleTransitionLevel) return
+        const cost = permanentGridTimingLevel + 1
+        if (prestigePoints < cost) return
+        setPrestigePoints(current => current - cost)
+        setPermanentGridTimingLevel(current => current + 1)
+    }
+
+    const purchasePermanentAutoQueueCooldownLevel = (): void => {
+        if (permanentAutoQueueCooldownLevel >= maxAutoQueueCooldownLevel) return
+        const cost = permanentAutoQueueCooldownLevel + 1
+        if (prestigePoints < cost) return
+        setPrestigePoints(current => current - cost)
+        setPermanentAutoQueueCooldownLevel(current => current + 1)
+    }
+
+    const purchasePermanentSolutionAssistChanceLevel = (): void => {
+        if (permanentSolutionAssistChanceLevel >= maxSolutionAssistChanceLevel) return
+        const cost = permanentSolutionAssistChanceLevel + 1
+        if (prestigePoints < cost) return
+        setPrestigePoints(current => current - cost)
+        setPermanentSolutionAssistChanceLevel(current => current + 1)
     }
 
     const completeSolvedPuzzle = (): void => {
@@ -637,6 +643,13 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         addMoney(PUZZLE_COMPLETE_BONUS * difficultyTier.rewardMultiplier)
     }
 
+    const changeDifficulty = (index: number): void => {
+        const clampedIndex = Math.max(0, Math.min(index, prestigeLevel))
+        setSelectedDifficultyIndex(clampedIndex)
+        const nextTier = getDifficultyTier(clampedIndex)
+        startPuzzle(nextTier.difficulty)
+    }
+
     const prestige = (): void => {
         if (!canPrestige) return
 
@@ -644,15 +657,15 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         const nextDifficultyTier = getDifficultyTier(nextPrestigeLevel)
         const permanentState = getAppliedUnlockState(getPermanentUnlockUpgrades(permanentUpgradeIds))
 
-        setPrestigePoints(currentPrestigePoints => currentPrestigePoints + difficultyTier.prestigeReward)
+        setPrestigePoints(currentPrestigePoints => currentPrestigePoints + prestigeReward)
         setPrestigeLevel(nextPrestigeLevel)
+        setSelectedDifficultyIndex(nextPrestigeLevel)
         setMoney(0)
         resetSolverSpeeds()
         resetPuzzleTransition()
         resetAutoQueueCooldown()
         resetSolutionAssistChance()
         resetSolvers(permanentState.solvers)
-        setDraftHelpers(permanentState.draftHelpers)
         setUpgradeFeatures(permanentState.features)
         setUnlockUpgrades(getRemainingUnlockUpgrades(permanentUpgradeIds))
         setStoredAutoSolverQueueEnabled(permanentState.features.includes('autoSolverQueue'))
@@ -675,6 +688,21 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         setSolverQueue([])
     }
 
+    const purchasePermanentAutoPrestige = (): void => {
+        if (autoPrestigeUnlocked) return
+        const cost = 6
+        if (prestigePoints < cost) return
+        setPrestigePoints(current => current - cost)
+        setAutoPrestigeUnlocked(true)
+        setAutoPrestigeEnabled(true)
+    }
+
+    useEffect(() => {
+        if (autoPrestigeUnlocked && autoPrestigeEnabled && canPrestige) {
+            prestige()
+        }
+    }, [money, prestigeGoal, canPrestige, autoPrestigeEnabled, autoPrestigeUnlocked, prestige])
+
     const value: SudokuContextModel = {
         sudoku,
         setSudoku,
@@ -690,6 +718,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         solverQueue,
         unlockUpgrades,
         permanentUpgrades,
+        permanentSolvers,
         upgradeFeatures,
         setUnlockUpgrades,
         cheatSolve,
@@ -724,9 +753,12 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         purchaseSolutionAssistChanceUpgrade,
         setAutoSolverQueueEnabled,
         setAutoSolverCooldownUntil,
+        autoPrestigeUnlocked,
+        autoPrestigeEnabled,
+        setAutoPrestigeEnabled,
+        purchasePermanentAutoPrestige,
         draftHelpers,
         solverDraftHelpers,
-        addDraftHelper,
         difficultyTier,
         prestigeLevel,
         prestigePoints,
@@ -736,7 +768,18 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         manualOpeningComplete,
         canPrestige,
         prestige,
-        completeSolvedPuzzle
+        completeSolvedPuzzle,
+        selectedDifficultyIndex,
+        changeDifficulty,
+        prestigeReward,
+        permanentSolverSpeedLevel,
+        permanentGridTimingLevel,
+        permanentAutoQueueCooldownLevel,
+        permanentSolutionAssistChanceLevel,
+        purchasePermanentSolverSpeedLevel,
+        purchasePermanentGridTimingLevel,
+        purchasePermanentAutoQueueCooldownLevel,
+        purchasePermanentSolutionAssistChanceLevel
     }
 
     const tickeffect = useTick(value)

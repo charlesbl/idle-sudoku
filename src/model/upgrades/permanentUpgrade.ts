@@ -5,7 +5,6 @@ export interface PermanentUpgradeModel extends UnlockUpgradeModel {
 }
 
 const permanentUpgradeCosts: Record<UnlockUpgradeCategory, number> = {
-    draftHelpers: 1,
     basicSolvers: 1,
     singleDrafts: 2,
     solverQueue: 3,

@@ -68,7 +68,6 @@ export const useSolvers = (): SolverHook => {
     const resetSolvers = (nextSolvers: SudokuSolver[] = []): void => {
         setCurrentSolverId(undefined)
         setSolverQueueIds([])
-        setDisabledAutoSolverIds([])
         setSolverIds(nextSolvers.map(solver => solver.id))
     }
 
