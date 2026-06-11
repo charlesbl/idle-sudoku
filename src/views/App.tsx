@@ -79,7 +79,7 @@ const SudokuLayout = styled.main`
 
 const Infos = styled.div`
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     width: min(100%, 620px);
     margin-bottom: 1rem;
@@ -110,12 +110,9 @@ const InfoLabel = styled.div`
 `
 
 const InfoValue = styled.div<{ $accent?: boolean }>`
-    overflow: hidden;
     color: ${props => props.$accent === true ? 'var(--accent-strong)' : 'var(--text-strong)'};
     font-size: 1.35rem;
     font-weight: 800;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 
     @media (width <= 620px) {
         font-size: 1.1rem;
@@ -128,6 +125,57 @@ const GoalValue = styled(InfoValue)`
     @media (width <= 620px) {
         font-size: 0.95rem;
     }
+`
+
+const PrestigeGoalCard = styled.div`
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    background: rgb(255 255 255 / 5.5%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+`
+
+const PrestigeGoalHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+`
+
+const ProgressBarContainer = styled.div`
+    position: relative;
+    width: 100%;
+    height: 0.8rem;
+    background: rgb(255 255 255 / 8%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 999px;
+    overflow: hidden;
+`
+
+const ProgressBarFill = styled.div<{ $progress: number; $canPrestige: boolean }>`
+    width: ${props => props.$progress}%;
+    height: 100%;
+    border-radius: inherit;
+    background: ${props =>
+        props.$canPrestige
+            ? 'linear-gradient(90deg, var(--accent) 0%, var(--gold) 100%)'
+            : 'linear-gradient(90deg, #3b82f6 0%, var(--accent) 100%)'};
+    box-shadow: ${props =>
+        props.$canPrestige
+            ? '0 0 10px var(--accent-strong)'
+            : 'none'};
+    transition: width 300ms ease-out, background 300ms ease-out;
+`
+
+const PrestigeSubtext = styled.div`
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
 `
 
 const DraftStatus = styled.span<{ $active: boolean }>`
@@ -711,9 +759,6 @@ const DifficultyValue = styled.div`
     font-size: 1.15rem;
     font-weight: 800;
     color: var(--text-strong);
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
     width: 100%;
     text-align: center;
 
@@ -737,9 +782,6 @@ const DifficultySubtext = styled.div`
     letter-spacing: 0.02em;
     margin-top: 0.4rem;
     text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     width: 100%;
 `
 
@@ -802,6 +844,7 @@ const App = (): JSX.Element => {
         ? autoSolverCooldownUntil - Date.now()
         : autoQueueCooldownDelayMs
     const autoQueueLabel = `Auto queue: ${autoSolverQueueEnabled ? 'On' : 'Off'}`
+    const prestigeProgress = prestigeGoal > 0 ? Math.min((money / prestigeGoal) * 100, 100) : 0
 
     const handleChangeDraftMode = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key !== ' ' && e.key !== '0') return
@@ -949,36 +992,12 @@ const App = (): JSX.Element => {
                         <InfoLabel>Prestige</InfoLabel>
 
                         <InfoValue $accent={prestigePoints > 0}>
-                            {`${prestigeLevel} / ${formatNumber(prestigePoints)} PP${autoPrestigeUnlocked && autoPrestigeEnabled ? ' (Auto)' : ''}`}
+                            {`Level ${prestigeLevel}`}
                         </InfoValue>
-                    </InfoCard>
 
-                    <InfoCard>
-                        <InfoLabel>Prestige Goal</InfoLabel>
-
-                        <GoalValue $accent={canPrestige}>
-                            {`${formatNumber(money)} / ${formatNumber(prestigeGoal)}`}
-
-                            &euro;
-                        </GoalValue>
-                    </InfoCard>
-
-                    {!manualOpeningComplete && (
-                        <InfoCard>
-                            <InfoLabel>Manual start</InfoLabel>
-
-                            <InfoValue>
-                                {`${manualVeryEasySolvedCount}/${manualVeryEasySolvedGoal}`}
-                            </InfoValue>
-                        </InfoCard>
-                    )}
-
-                    <InfoCard>
-                        <InfoLabel>Solver</InfoLabel>
-
-                        <InfoValue>
-                            {currentSolver?.name ?? 'None'}
-                        </InfoValue>
+                        <PrestigeSubtext>
+                            {`${formatNumber(prestigePoints)} PP${autoPrestigeUnlocked && autoPrestigeEnabled ? ' (Auto)' : ''}`}
+                        </PrestigeSubtext>
                     </InfoCard>
 
                     <InfoCard>
@@ -991,25 +1010,32 @@ const App = (): JSX.Element => {
                         </InfoValue>
                     </InfoCard>
 
-                    <InfoCard>
-                        <InfoLabel>Next grid</InfoLabel>
-
-                        <InfoValue $accent={isSolved}>
-                            {puzzleTransitionDelay}
-                        </InfoValue>
-                    </InfoCard>
-
-                    {canQueueSolvers && (
+                    {!manualOpeningComplete && (
                         <InfoCard>
-                            <InfoLabel>Queue</InfoLabel>
+                            <InfoLabel>Manual start</InfoLabel>
 
-                            <InfoValue $accent={autoQueueSolvers}>
-                                {hasAutoQueueUpgrade
-                                    ? `${autoQueueSolvers ? 'auto' : 'manual'} (${solverQueue.length})`
-                                    : solverQueue.length}
+                            <InfoValue>
+                                {`${manualVeryEasySolvedCount}/${manualVeryEasySolvedGoal}`}
                             </InfoValue>
                         </InfoCard>
                     )}
+
+                    <PrestigeGoalCard>
+                        <PrestigeGoalHeader>
+                            <InfoLabel style={{ marginBottom: 0 }}>Prestige Goal</InfoLabel>
+
+                            <GoalValue $accent={canPrestige}>
+                                {`${formatNumber(money)} / ${formatNumber(prestigeGoal)} € (${prestigeProgress.toFixed(0)}%)`}
+                            </GoalValue>
+                        </PrestigeGoalHeader>
+
+                        <ProgressBarContainer>
+                            <ProgressBarFill
+                                $canPrestige={canPrestige}
+                                $progress={prestigeProgress}
+                            />
+                        </ProgressBarContainer>
+                    </PrestigeGoalCard>
                 </Infos>
 
                 <BoardShell>

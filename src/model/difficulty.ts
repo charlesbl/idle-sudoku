@@ -10,11 +10,11 @@ export interface DifficultyTier {
 }
 
 export const difficultyTiers: DifficultyTier[] = [
-    { difficulty: 'very-easy', label: 'Very easy', rewardMultiplier: 1, prestigeReward: 1 },
-    { difficulty: 'easy', label: 'Easy', rewardMultiplier: 2, prestigeReward: 2 },
-    { difficulty: 'medium', label: 'Medium', rewardMultiplier: 4, prestigeReward: 4 },
-    { difficulty: 'hard', label: 'Hard', rewardMultiplier: 8, prestigeReward: 8 },
-    { difficulty: 'expert', label: 'Expert', rewardMultiplier: 16, prestigeReward: 16 }
+    { difficulty: 'very-easy', label: 'Very easy', rewardMultiplier: 1, prestigeReward: 4 },
+    { difficulty: 'easy', label: 'Easy', rewardMultiplier: 2, prestigeReward: 6 },
+    { difficulty: 'medium', label: 'Medium', rewardMultiplier: 4, prestigeReward: 9 },
+    { difficulty: 'hard', label: 'Hard', rewardMultiplier: 8, prestigeReward: 14 },
+    { difficulty: 'expert', label: 'Expert', rewardMultiplier: 16, prestigeReward: 20 }
 ]
 
 export const getDifficultyTier = (prestigeLevel: number | undefined): DifficultyTier => {
@@ -32,7 +32,7 @@ export const getDifficultyTier = (prestigeLevel: number | undefined): Difficulty
         ...expertTier,
         label: `${expertTier.label} +${normalizedPrestigeLevel - (difficultyTiers.length - 1)}`,
         rewardMultiplier: scale,
-        prestigeReward: scale
+        prestigeReward: Math.round(4 * Math.pow(1.5, normalizedPrestigeLevel))
     }
 }
 

@@ -27,13 +27,14 @@ const DraftTileStyle = styled.div`
 `
 
 interface DraftTileProps {
-    numbers: boolean[]
+    numbers?: boolean[]
 }
 
 const DraftTile = (props: DraftTileProps): JSX.Element => {
+    const numbers = props.numbers ?? Array(9).fill(false)
     return (
         <SubGridStyle>
-            {props.numbers.map((selected, index) => (
+            {numbers.map((selected, index) => (
                 <DraftTileStyle key={index}>{selected ? index + 1 : ''}</DraftTileStyle>
             ))}
         </SubGridStyle>
