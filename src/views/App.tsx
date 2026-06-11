@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import styled, { keyframes } from 'styled-components'
 import SudokuGrid from './SudokuGrid'
 import Upgrades from './Upgrades'
@@ -336,19 +337,35 @@ const ActionBar = styled.div`
 
 
 
-const ActionButton = styled.button<{ $active?: boolean }>`
+const ActionButton = styled.button<{ $active?: boolean; $danger?: boolean }>`
     min-height: 2.5rem;
     padding: 0 1rem;
-    border: 1px solid ${props => props.$active === true ? 'rgb(81 214 194 / 70%)' : 'rgb(255 255 255 / 12%)'};
+    border: 1px solid ${props => 
+        props.$active === true 
+            ? 'rgb(81 214 194 / 70%)' 
+            : props.$danger === true
+                ? 'rgb(239 68 68 / 70%)'
+                : 'rgb(255 255 255 / 12%)'
+    };
     border-radius: 8px;
-    color: var(--text-strong);
+    color: ${props => props.$danger === true ? '#fee2e2' : 'var(--text-strong)'};
     font: inherit;
     font-size: 0.9rem;
     font-weight: 800;
-    background: ${props => props.$active === true
-        ? 'linear-gradient(180deg, rgb(81 214 194 / 28%), rgb(81 214 194 / 12%))'
-        : 'linear-gradient(180deg, rgb(255 255 255 / 14%), rgb(255 255 255 / 5.5%))'};
-    box-shadow: ${props => props.$active === true ? 'inset 0 1px 0 rgb(255 255 255 / 10%), 0 0 18px rgb(81 214 194 / 18%)' : 'none'};
+    background: ${props => 
+        props.$active === true
+            ? 'linear-gradient(180deg, rgb(81 214 194 / 28%), rgb(81 214 194 / 12%))'
+            : props.$danger === true
+                ? 'linear-gradient(180deg, rgb(239 68 68 / 28%), rgb(239 68 68 / 12%))'
+                : 'linear-gradient(180deg, rgb(255 255 255 / 14%), rgb(255 255 255 / 5.5%))'
+    };
+    box-shadow: ${props => 
+        props.$active === true 
+            ? 'inset 0 1px 0 rgb(255 255 255 / 10%), 0 0 18px rgb(81 214 194 / 18%)' 
+            : props.$danger === true
+                ? 'inset 0 1px 0 rgb(255 255 255 / 10%), 0 0 18px rgb(239 68 68 / 18%)'
+                : 'none'
+    };
     cursor: pointer;
     transition:
         border-color 160ms ease,
@@ -357,7 +374,7 @@ const ActionButton = styled.button<{ $active?: boolean }>`
         transform 160ms ease;
 
     &:focus-visible {
-        outline: 2px solid var(--accent-strong);
+        outline: 2px solid ${props => props.$danger === true ? '#f87171' : 'var(--accent-strong)'};
         outline-offset: 2px;
     }
 
@@ -369,8 +386,12 @@ const ActionButton = styled.button<{ $active?: boolean }>`
     }
 
     &:hover:not(:disabled) {
-        border-color: rgb(81 214 194 / 80%);
-        background: linear-gradient(180deg, rgb(81 214 194 / 25%), rgb(81 214 194 / 12%));
+        border-color: ${props => props.$danger === true ? 'rgb(239 68 68 / 80%)' : 'rgb(81 214 194 / 80%)'};
+        background: ${props => 
+            props.$danger === true
+                ? 'linear-gradient(180deg, rgb(239 68 68 / 25%), rgb(239 68 68 / 12%))'
+                : 'linear-gradient(180deg, rgb(81 214 194 / 25%), rgb(81 214 194 / 12%))'
+        };
         transform: translateY(-1px);
     }
 
@@ -769,6 +790,7 @@ const DifficultySubtext = styled.div`
 `
 
 const App = (): JSX.Element => {
+    const [confirmClear, setConfirmClear] = useState(false)
     const {
         sudoku,
         setSudoku,
@@ -1124,13 +1146,41 @@ const App = (): JSX.Element => {
                         </TooltipAnchor>
                     )}
 
-                    <TooltipAnchor>
-                        <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
+                    {confirmClear ? (
+                        <>
+                            <TooltipAnchor>
+                                <ActionButton
+                                    $danger
+                                    onClick={() => {
+                                        localStorage.clear()
+                                        window.location.reload()
+                                    }}
+                                >
+                                    Confirm clear
+                                </ActionButton>
 
-                        <Tooltip role="tooltip">
-                            Reset all credits, upgrades, and prestige points
-                        </Tooltip>
-                    </TooltipAnchor>
+                                <Tooltip role="tooltip">
+                                    This will permanently delete all your progress!
+                                </Tooltip>
+                            </TooltipAnchor>
+
+                            <ActionButton
+                                onClick={() => {
+                                    setConfirmClear(false)
+                                }}
+                            >
+                                Cancel
+                            </ActionButton>
+                        </>
+                    ) : (
+                        <TooltipAnchor>
+                            <ActionButton onClick={() => { setConfirmClear(true) }}>Clear progress</ActionButton>
+
+                            <Tooltip role="tooltip">
+                                Reset all credits, upgrades, and prestige points
+                            </Tooltip>
+                        </TooltipAnchor>
+                    )}
                 </ActionBar>
             </SudokuLayout>
 
