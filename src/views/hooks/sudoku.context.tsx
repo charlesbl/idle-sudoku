@@ -314,6 +314,45 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
     const [permanentAutoQueueCooldownLevel, setPermanentAutoQueueCooldownLevel] = useLocalStorageState<number>('permanentAutoQueueCooldownLevel', { defaultValue: 0 })
     const [permanentSolutionAssistChanceLevel, setPermanentSolutionAssistChanceLevel] = useLocalStorageState<number>('permanentSolutionAssistChanceLevel', { defaultValue: 0 })
 
+    useEffect(() => {
+        const creditFn = (amount: number) => {
+            if (typeof amount !== 'number' || isNaN(amount)) {
+                console.warn('Usage: giveCredit(amount)')
+                return
+            }
+            addMoney(amount)
+            console.log(`%c[Cheat] Added ${amount} credits!`, 'color: #10b981; font-weight: bold;')
+        };
+        (window as any).giveCredit = creditFn;
+        (window as any).giveCredits = creditFn;
+        (window as any).credit = creditFn;
+        (window as any).credits = creditFn;
+
+        const pointsFn = (amount: number) => {
+            if (typeof amount !== 'number' || isNaN(amount)) {
+                console.warn('Usage: givePoint(amount)')
+                return
+            }
+            setPrestigePoints((current: number) => current + amount)
+            console.log(`%c[Cheat] Added ${amount} prestige points!`, 'color: #8b5cf6; font-weight: bold;')
+        };
+        (window as any).givePoint = pointsFn;
+        (window as any).givePoints = pointsFn;
+        (window as any).point = pointsFn;
+        (window as any).points = pointsFn;
+
+        return () => {
+            delete (window as any).giveCredit
+            delete (window as any).giveCredits
+            delete (window as any).credit
+            delete (window as any).credits
+            delete (window as any).givePoint
+            delete (window as any).givePoints
+            delete (window as any).point
+            delete (window as any).points
+        }
+    }, [addMoney, setPrestigePoints])
+
     const getSolverSpeedLevel = (solver: SudokuSolver): number =>
         normalizeSolverSpeedLevel(storedGetSolverSpeedLevel(solver) + (permanentSolverSpeedLevel ?? 0))
 

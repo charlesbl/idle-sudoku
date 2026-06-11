@@ -334,12 +334,6 @@ const ActionBar = styled.div`
     }
 `
 
-const DevActionBar = styled(ActionBar)`
-    margin-top: 0.55rem;
-    padding-top: 0.75rem;
-    border-top: 1px dashed rgb(255 255 255 / 13%);
-`
-
 
 
 const ActionButton = styled.button<{ $active?: boolean }>`
@@ -382,17 +376,6 @@ const ActionButton = styled.button<{ $active?: boolean }>`
 
     &:active:not(:disabled) {
         transform: translateY(0);
-    }
-`
-
-const DevActionButton = styled(ActionButton)`
-    border-color: rgb(248 113 113 / 42%);
-    color: #fecaca;
-    background: linear-gradient(180deg, rgb(248 113 113 / 18%), rgb(127 29 29 / 15%));
-
-    &:hover:not(:disabled) {
-        border-color: rgb(248 113 113 / 72%);
-        background: linear-gradient(180deg, rgb(248 113 113 / 25%), rgb(127 29 29 / 20%));
     }
 `
 
@@ -800,7 +783,6 @@ const App = (): JSX.Element => {
         solverQueue,
         reset,
         money,
-        addMoney,
         difficultyTier,
         prestigeLevel,
         prestigePoints,
@@ -1150,16 +1132,6 @@ const App = (): JSX.Element => {
                         </Tooltip>
                     </TooltipAnchor>
                 </ActionBar>
-
-                <DevActionBar>
-                    <TooltipAnchor>
-                        <DevActionButton onClick={() => { addMoney(1000) }}>Give 1000</DevActionButton>
-
-                        <Tooltip role="tooltip">
-                            Developer Cheat: Add 1,000 credits
-                        </Tooltip>
-                    </TooltipAnchor>
-                </DevActionBar>
             </SudokuLayout>
 
             <SolverPanel>
