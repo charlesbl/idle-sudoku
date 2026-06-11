@@ -129,7 +129,7 @@ export interface SudokuContextModel {
     purchasePermanentSolutionAssistChanceLevel: () => void
 }
 
-const SudokuContext = createContext<SudokuContextModel>({} as any)
+const SudokuContext = createContext<SudokuContextModel>({} as unknown as SudokuContextModel)
 
 const getUpgradeRemovalIds = (upgrade: UnlockUpgradeModel): Set<string> => {
     const replacedSolverIds = upgrade.solver?.replaces?.map(solver => solver.id) ?? []
@@ -782,8 +782,7 @@ export const SudokuProvider = (props: PropsWithChildren): JSX.Element => {
         purchasePermanentSolutionAssistChanceLevel
     }
 
-    const tickeffect = useTick(value)
-    tickeffect()
+    useTick(value)
 
     return (
         <SudokuContext.Provider value={value}>

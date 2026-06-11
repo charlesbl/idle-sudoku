@@ -31,7 +31,7 @@ export const useTick = ({
     autoQueueCooldownDelayMs,
     solutionAssistChancePercent,
     completeSolvedPuzzle
-}: SudokuContextModel): () => void => {
+}: SudokuContextModel): void => {
     const checkSolved = (): boolean =>
         sudoku !== undefined &&
         solution !== undefined &&
@@ -90,8 +90,7 @@ export const useTick = ({
         return true
     }
 
-    return (): void => {
-        useEffect(() => {
+    useEffect(() => {
             if (isSolved) {
                 const resetTimeout = setTimeout(() => {
                     reset()
@@ -138,9 +137,11 @@ export const useTick = ({
                         newSudoku = runSolverStep(currentSolver.solve, newSudoku, nextSolverTile, solution, solutionAssistChancePercent)
 
                         if (newSudoku[nextSolverTile].value !== undefined && newSudoku[nextSolverTile].value !== previousValue) {
-                            solverDraftHelpers.forEach((helper) => {
-                                helper.help(newSudoku, nextSolverTile)
-                            })
+                            if (solution !== undefined && newSudoku[nextSolverTile].value === solution[nextSolverTile]) {
+                                solverDraftHelpers.forEach((helper) => {
+                                    helper.help(newSudoku, nextSolverTile)
+                                })
+                            }
                         }
 
                         if (nextSolverTile === 80) {
@@ -168,5 +169,4 @@ export const useTick = ({
                 clearInterval(solverInterval)
             }
         }, [solverTile, sudoku, isSolved, currentSolver, solverQueue, autoSolvers, upgradeFeatures, autoSolverQueueEnabled, solverDraftHelpers, solverSpeedLevels, puzzleTransitionDelayMs, autoSolverCooldownUntil, autoQueueCooldownDelayMs, solutionAssistChancePercent])
-    }
 }

@@ -418,7 +418,11 @@ const Upgrades = (): JSX.Element => {
                                 >
                                     {upgradeKindLabels.unlock}
                                 </TabButton>
-                                <Tooltip data-align="left" role="tooltip">
+
+                                <Tooltip
+data-align="left"
+role="tooltip"
+                                >
                                     Show upgrades to unlock new solvers and mechanics
                                 </Tooltip>
                             </TabTooltipAnchor>
@@ -434,6 +438,7 @@ const Upgrades = (): JSX.Element => {
                                 >
                                     {upgradeKindLabels.speed}
                                 </TabButton>
+
                                 <Tooltip role="tooltip">
                                     Show upgrades to increase solver speed and grid transition speed
                                 </Tooltip>
@@ -450,7 +455,11 @@ const Upgrades = (): JSX.Element => {
                                 >
                                     {upgradeKindLabels.permanent}
                                 </TabButton>
-                                <Tooltip data-align="right" role="tooltip">
+
+                                <Tooltip
+data-align="right"
+role="tooltip"
+                                >
                                     Show permanent PP upgrades
                                 </Tooltip>
                             </TabTooltipAnchor>
@@ -516,6 +525,7 @@ const Upgrades = (): JSX.Element => {
                                                         onPurchase={purchasePermanentSolverSpeedLevel}
                                                     />
                                                 )}
+
                                                 {permanentGridTimingLevel < maxPuzzleTransitionLevel && (
                                                     <Upgrade
                                                         availableAmount={prestigePoints}
@@ -528,6 +538,7 @@ const Upgrades = (): JSX.Element => {
                                                         onPurchase={purchasePermanentGridTimingLevel}
                                                     />
                                                 )}
+
                                                 {permanentAutoQueueCooldownLevel < maxAutoQueueCooldownLevel && (
                                                     <Upgrade
                                                         availableAmount={prestigePoints}
@@ -540,6 +551,7 @@ const Upgrades = (): JSX.Element => {
                                                         onPurchase={purchasePermanentAutoQueueCooldownLevel}
                                                     />
                                                 )}
+
                                                 {permanentSolutionAssistChanceLevel < maxSolutionAssistChanceLevel && (
                                                     <Upgrade
                                                         availableAmount={prestigePoints}
@@ -552,6 +564,7 @@ const Upgrades = (): JSX.Element => {
                                                         onPurchase={purchasePermanentSolutionAssistChanceLevel}
                                                     />
                                                 )}
+
                                                 {!autoPrestigeUnlocked && (
                                                     <Upgrade
                                                         availableAmount={prestigePoints}

@@ -17,13 +17,13 @@ export const fillCellsWithDraftsSolver: SudokuSolver = {
 export const calculateValidDraftsSolver: SudokuSolver = {
     id: 'calculate-valid-drafts',
     name: 'Calculate valid drafts',
-    solve: (sudoku: SudokuModel, solvingTile: number): SudokuModel => {
+    solve: (sudoku: SudokuModel, solvingTile: number, _testedNumbers: TestedNumber[], solution?: number[]): SudokuModel => {
         let newSudoku = [...sudoku]
         newSudoku[solvingTile].draftNumbers = Array(9).fill(true)
-        const testedNumbers: TestedNumber[] = newSudoku[solvingTile].draftNumbers.map((isDraft, index) => ({ index, isDraft }))
-        newSudoku = clearRowDraftsSolver.solve(newSudoku, solvingTile, testedNumbers)
-        newSudoku = clearColumnDraftsSolver.solve(newSudoku, solvingTile, testedNumbers)
-        newSudoku = clearBlockDraftsSolver.solve(newSudoku, solvingTile, testedNumbers)
+        const testedNumbersForCell: TestedNumber[] = newSudoku[solvingTile].draftNumbers.map((isDraft, index) => ({ index, isDraft }))
+        newSudoku = clearRowDraftsSolver.solve(newSudoku, solvingTile, testedNumbersForCell, solution)
+        newSudoku = clearColumnDraftsSolver.solve(newSudoku, solvingTile, testedNumbersForCell, solution)
+        newSudoku = clearBlockDraftsSolver.solve(newSudoku, solvingTile, testedNumbersForCell, solution)
         return newSudoku
     },
     replaces: [fillCellsWithDraftsSolver, clearRowDraftsSolver, clearColumnDraftsSolver, clearBlockDraftsSolver, clearImpossibleDraftsSolver]

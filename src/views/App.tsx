@@ -686,15 +686,15 @@ const DifficultyArrowButton = styled.button`
     cursor: pointer;
     transition: all 120ms ease;
 
+    &:disabled {
+        opacity: 0.2;
+        cursor: not-allowed;
+    }
+
     &:hover:not(:disabled) {
         border-color: rgb(81 214 194 / 60%);
         background: rgb(81 214 194 / 10%);
         color: var(--accent-strong);
-    }
-
-    &:disabled {
-        opacity: 0.2;
-        cursor: not-allowed;
     }
 `
 
@@ -747,6 +747,7 @@ const App = (): JSX.Element => {
     const {
         sudoku,
         setSudoku,
+        solution,
         draftMode,
         setDraftMode,
         selectedTile,
@@ -851,9 +852,11 @@ const App = (): JSX.Element => {
         newSudoku[selectedTile].value = value
         newSudoku[selectedTile].error = false
 
-        draftHelpers.forEach((helper) => {
-            helper.help(newSudoku, selectedTile)
-        })
+        if (solution !== undefined && value === solution[selectedTile]) {
+            draftHelpers.forEach((helper) => {
+                helper.help(newSudoku, selectedTile)
+            })
+        }
 
         setSudoku(newSudoku)
     }
@@ -897,6 +900,7 @@ const App = (): JSX.Element => {
 
                     <DifficultyCard>
                         <InfoLabel>Difficulty</InfoLabel>
+
                         <DifficultySelector>
                             <DifficultyArrowButton
                                 disabled={selectedDifficultyIndex <= 0}
@@ -913,8 +917,10 @@ const App = (): JSX.Element => {
                                 <DifficultyValue>
                                     {difficultyTier.label}
                                 </DifficultyValue>
+
                                 <DifficultyMultiplier>
-                                    x{formatNumber(difficultyTier.rewardMultiplier)}
+                                    x
+{formatNumber(difficultyTier.rewardMultiplier)}
                                 </DifficultyMultiplier>
                             </DifficultyInfo>
 
@@ -1063,6 +1069,7 @@ const App = (): JSX.Element => {
                         >
                             New puzzle
                         </ActionButton>
+
                         <Tooltip role="tooltip">
                             Generate a new Sudoku grid
                         </Tooltip>
@@ -1079,6 +1086,7 @@ const App = (): JSX.Element => {
 
                             PP
                         </ActionButton>
+
                         <Tooltip role="tooltip">
                             {canPrestige
                                 ? `Reset progress and earn ${formatNumber(prestigeReward)} PP`
@@ -1096,8 +1104,12 @@ const App = (): JSX.Element => {
                                     setAutoPrestigeEnabled(!autoPrestigeEnabled)
                                 }}
                             >
-                                Auto-prestige: {autoPrestigeEnabled ? 'On' : 'Off'}
+                                Auto-prestige: 
+{' '}
+
+{autoPrestigeEnabled ? 'On' : 'Off'}
                             </ActionButton>
+
                             <Tooltip role="tooltip">
                                 Automatically prestige when the prestige goal is reached
                             </Tooltip>
@@ -1106,6 +1118,7 @@ const App = (): JSX.Element => {
 
                     <TooltipAnchor>
                         <ActionButton onClick={() => { localStorage.clear() }}>Clear progress</ActionButton>
+
                         <Tooltip role="tooltip">
                             Reset all credits, upgrades, and prestige points
                         </Tooltip>
@@ -1115,6 +1128,7 @@ const App = (): JSX.Element => {
                 <DevActionBar>
                     <TooltipAnchor>
                         <DevActionButton onClick={() => { addMoney(1000) }}>Give 1000</DevActionButton>
+
                         <Tooltip role="tooltip">
                             Developer Cheat: Add 1,000 credits
                         </Tooltip>
@@ -1167,7 +1181,11 @@ const App = (): JSX.Element => {
                                         >
                                             {autoQueueLabel}
                                         </QueueAutoButton>
-                                        <Tooltip data-align="right" role="tooltip">
+
+                                        <Tooltip
+data-align="right"
+role="tooltip"
+                                        >
                                             Automatically add selected solvers to queue when idle
                                         </Tooltip>
                                     </TooltipAnchor>
@@ -1247,6 +1265,7 @@ const App = (): JSX.Element => {
                                                     </SolverQueueBadge>
                                                 )}
                                             </SolverButton>
+
                                             <Tooltip role="tooltip">
                                                 {canQueueSolvers
                                                     ? (autoQueueSolvers ? 'Run solver immediately' : 'Add solver to queue')
@@ -1266,7 +1285,11 @@ const App = (): JSX.Element => {
                                                     }}
                                                     type="button"
                                                 />
-                                                <Tooltip data-align="right" role="tooltip">
+
+                                                <Tooltip
+data-align="right"
+role="tooltip"
+                                                >
                                                     {autoSolverActive
                                                         ? 'Disable solver in auto queue'
                                                         : 'Enable solver in auto queue'}

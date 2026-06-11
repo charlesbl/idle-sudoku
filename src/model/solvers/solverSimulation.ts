@@ -41,7 +41,9 @@ const runSolverPass = (sudoku: SudokuModel, solution: number[]): SudokuModel => 
             nextSudoku = runSolverStep(solver.solve, nextSudoku, tileIndex, solution, 100)
 
             if (nextSudoku[tileIndex].value !== undefined && nextSudoku[tileIndex].value !== previousValue) {
-                solverDraftHelpers.forEach(helper => { helper.help(nextSudoku, tileIndex) })
+                if (solution !== undefined && nextSudoku[tileIndex].value === solution[tileIndex]) {
+                    solverDraftHelpers.forEach(helper => { helper.help(nextSudoku, tileIndex) })
+                }
             }
 
             if (!isSolved(nextSudoku, solution)) continue
